@@ -1,0 +1,552 @@
+---
+title: "HW2_Template"
+author: ' Lina Cao , Thursdays 3:30PM '
+date: "SDGB 7844; Prof. Nagaraja; Fall 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Executive Summary
+This report discusses facters that can influence Gini Index and how. Ten variables are picked at first, in order to build a linear regression model that can explain Gini Index. I collect 264 observed countries' data, and use 70 of them(with complete data set) to fit a muiti-linear regression model. I also try to improve the model and make appropriate choice by checking Cook's distance and doing partial F-test. After deciding variables in final model, I update the data set to countries with complete data for the four variables, as well as the final regression. The final regression result shows that Gini Index can be influenced by GDP(dollar), growth rate of GDP(%), inflation rate(%) and health expenditures per capita(dollar). 
+
+
+
+# Introduction
+Gini Index is a measure of statistical dispersion that intended to represent the income or wealth distribution of a nation's residents, and is the most commonly used measure of inequality.(source: wikipedia) It is widely used for a nation's politicians or economists for making economic policies and in turn narrow the gap between the rich and poor. Therefore, understanding what factors may influence Gini coefficient and build an efficient model to monitor and predict Gini Index become crucial topics.
+In a mathematical way, Gini coefficient is usually defined based on the Lorenz curve, which plots the proportion of the total income of the population (y axis) that is cumulatively earned by the bottom x% of the population. When Gini Index equals zero, perfectly equality is expressed, all members in the research area has the same income; by contrast, when it equals one, inequality approaches the maximum status.
+Like all the other indices, Gini Index also has defects. For example, because the Gini coefficient measures relative, not absolute, wealth, same Gini coefficient can have different income distributions in empirical world. This means the number of Gini index may sometimes treat politicians about one nation's income inequality status.
+Therefore, in this report, multi-variable linear regression is introduced to model Gini Index in another aspect.
+
+# Data
+
+## Variables
+
+All data sets in this paper are downloaded from the website of world bank (http://data.worldbank.org). In addition to Gini Index, 10 more variables are introduced to build a decent regression model. As is known to all, Gini index is an integrated economic parameter that can be used in one nation's macroeconomic regulation and control process. I consider the variable choosing categories from three steps for a nation's income distribution process: total wealth of a country, the distribution of the wealth and the redistribution process. 
+Based on the three aspects above, many variables are considered at the very begining, such as "govenment expenditure", "net official development assistance", "infrastruction spending", etc. But taking the amount of total effective data into consideration, i.e, to make the data set combines more data in the chosen year, I chose the following variables.
+
+###(0) Gini Index (response variable)
+```{r}
+gini <- read.csv("API_SI.POV.GINI_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+###(1) GDP($)
+  As an important economic indicator, GDP is the variable that can be considered as how much a nation can produce in one year and to be an indicator of total wealth. Costanza Naguib(2015) concluded in his paper---The relationship between inequality and GDP growth---that higher inequality levels are associated to higher levels of per capita GDP and per capita GDP growth. 
+```{r}
+gdp <- read.csv("API_NY.GDP.MKTP.CD_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+###(2) GDP annual growth rate(%)
+With the inspiration of Costanza Naguib's finding(2015), GDP's growth rate is a possible variable to explain Gini Index. Also, dividing data by former year's data can help build a more stationary data in time series cases.
+```{r}
+r.gdp <- read.csv("API_NY.GDP.MKTP.KD.ZG_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+###(3)Inflation rate (consumer prices, annual %)
+Inflation is a problem occuring also under the aspect of total wealth. It reflects a general increase in prices and fall in the purchasing value of money. Since this is a model for inequality, I chose CPI related inflation computing data in my model.
+```{r}
+inf <- read.csv("API_FP.CPI.TOTL.ZG_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+###(4) Population
+Population is also an important variable in macroeconomic problems.A larger population produces larger amount of total wealth, while it also gives politician a higher level difficulty to give proper resource allocation.
+```{r}
+pop <- read.csv("API_SP.POP.TOTL_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+###(5) Unemployment
+Income inequality may also as a result of people not have own work to earn enough money. Unemployment rate, to some extend give information about it.
+```{r}
+uem <- read.csv("API_SL.UEM.TOTL.ZS_DS2_en_csv_v2.csv", sep = ",",header = TRUE, stringsAsFactors = FALSE)
+```
+
+###(6) Tax revenue (% of GDP)
+For a government, income inequality is another name of social benefit allocation and redistribution. For a government, their "revenue" comes from tax, which is a preparation of income reallocation. Therefore I include this variable in the model. By dividing by corresponding GDP of each country, this data series gets rid of the scale influence to some extend.
+```{r}
+tax <- read.csv("API_GC.TAX.TOTL.GD.ZS_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+###(7) Refugee population by country or territory of origin (% of urban population)
+Refugees are "product" of the failure of equal income distribution. A larger size of refugee in one country always indicates a heavier burden for a government to allocate more alms for refugees, which will lead to a higher Gini Index. 
+```{r}
+refuge <- read.csv("API_SM.POP.REFG.OR_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+###(8) Urban population (% of total)
+Urban area always tends to feed wealthy people, also government may implement better allocation policies with the help of a more advanced ideology, in which case the Gini index will be smaller than that in suburban area. 
+
+```{r}
+urban <- read.csv("API_SP.URB.TOTL.IN.ZS_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+###(9) Labor force(people)
+Just an inverse version of unemployment, labor force is a sign for people that can work, which may have opposite direction of the way Gini index goes.
+
+```{r}
+lbf <- read.csv("API_SL.TLF.TOTL.IN_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+
+###(10)	Mobile cellular subscriptions (per 100 people) 
+This is a sign for the development of mobile devices. In this high-tech era, cellular subscription is a sign for advanced society. And an advanced society tends to have smaller gap between the wealthy and the poor.
+```{r}
+mobile <- read.csv("API_IT.CEL.SETS.P2_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+###(11) Health expenditure per capita
+Health care is a symbol of a higher level of consumption. I regard it as also as a way to separate people who have high and low amount of disposable income, which implies the status of people's income level in one certain area.
+```{r}
+hlt <- read.csv("API_SH.XPD.PCAP_DS2_en_csv_v2.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+```
+
+
+## Data Cleaning
+
+The basic rule to clean and find proper year for further study is quite simple. I first wrote a function to calculate, for each file (variable), which column contains most data and then chose the column number that appear the most times. 
+```{r}
+mostdata <- function(X=gini){
+  k=5 # each file has yearly data starting from the 5th column, set as the initial column number
+  i=5 # indicator of which column(the corresponding year) contains most data
+  nmax=0 # initial data for the largest number of one-year data
+  #data <- NULL
+  for (k in 5:ncol(X)-1){
+    if ((sum(is.na(X[,k+1])==0) > sum(is.na(X[,k])==0))&(sum(is.na(X[,k+1])==0)>sum(is.na(X[,i])==0))){
+      k=k+1
+      nmax=sum(is.na(X[,k+1])==0)
+      i=k
+    }#end of if
+  }#end of for loop
+  #return(list("largest amount" = nmax,"i" = i, "data" = X[,i]))
+  # for here, only output which column has largest amount of data 
+  return(i)
+}# end of function
+# Use function to get which column contains most data for each variable
+temp <- c(mostdata(gini),mostdata(gdp),mostdata(r.gdp),mostdata(inf),mostdata(pop),mostdata(uem),mostdata(tax),mostdata(refuge),mostdata(urban),mostdata(lbf),mostdata(mobile),mostdata(hlt))
+# Choose the column that appear for most of the time
+table(temp)
+rm(temp)
+```
+The result is a bit discussion-needed though. There are two columns, 35 and 55, 
+```{r}
+# Check the year with largest data amount
+c(colnames(mobile)[35], colnames(mobile)[55])
+```
+which indicates for year 1990 and 2010 respectively, have largest data amount in some files. Since our goal is to find regression model fitted with Gini Index, I focused on which column in the data set of Gini index can give most data. 
+```{r}
+# Since Gini index is the response variable, use the output of it, which is 55
+c(mostdata(gini), colnames(gini)[55])
+rm(mostdata)
+```
+Therefore, I finally used 55th column, i.e year 2010, in each variables' data set to keep year consistency, and make a reasonable regression for interpretation.
+```{r}
+# Merge data into one data set
+#data0.all <- cbind(gini[,1:2],"gini"=gini[,55],"gdp"=gdp[,55],"r.gdp"=r.gdp[,55],"inf"=inf[,55],"pop"=pop[,55],"uem"=uem[,55],"tax"=tax[,55],"refuge"=refuge[,55],"urban"=urban[,55],"lbf"=lbf[,55],"mobile"=mobile[,55],"hlt"=hlt[,55])
+
+# Write a new file with all data in 2010 for each variable
+#write.csv(data0.all,file = "data_withna.csv", row.names = FALSE)
+```
+
+```{r}
+# Read data table
+data1.all <- read.csv("data_withna.csv", sep = ",", header = TRUE, stringsAsFactors = FALSE)
+# Get completed dataset_1
+aaa <- data1.all[complete.cases(data1.all),]
+nrow(aaa)
+# Names of the countries that are used 
+#(aaa)[,1]
+```
+
+There are 70 countries, including Australia, Canada, Switzerland and other countries that are included in the final data set.
+
+## Statistical Description
+```{r}
+# Correlation matrix
+#cor(aaa[,-2:-1])
+# It is too messy, calculate separately
+t(cor(aaa[4:14],aaa$gini))
+```
+First check the correlation between Gini Index and each variable. Among 11 variables, "tax","urban","mobile","hlt" have negative correlation with Gini Index. When considering the absolute value for how much the linear correlation each variable has, "r.gdp"(0.4193) has the largest linear correlation while "gdp"(0.0249) has least linear correlation with Gini Index.
+```{r}
+#sd <- apply(aaa[,3:14],2,sd,na.rm=TRUE)
+#library(knitr)
+#kable(rbind(summary(aaa[,3:14]),round(sd,digits = 4)))
+#rm(sd)
+```
+```{r fig.cap="FIGURE A CAPTION", fig.width=3, fig.height=3}
+# Histograms for each variable
+
+# gini: right skewed, all data are between 20 and 60
+#par(mfrow = c(6,2))
+#pdf("gini.pdf", width=3, height=3)
+#hist(aaa$gini, las = TRUE,
+#     main = "Gini Index(World Bank estimate)",xlab = "Gini Index",
+#     col = "azure4",density = 45, angle = 45, border = "black",
+#     cex.label = 0.5, cex.axis = 0.5, cex.main = 0.7)
+
+# gdp: has an outlier larger than 60 trillion dollars, most data are lower than 5 trillion dollars
+#hist(aaa$gdp, las = TRUE,
+#     main = "GDP (current:USD)", xlab = "dollars",
+#     col = "firebrick2",density = 45, angle = 45, border = "black")
+# r.gdp: almost symmetric, yet the middle part does not contain most data
+#hist(aaa$r.gdp, las = TRUE,
+#     main = "GDP Growt (annual %)", xlab = "growth%",
+#     col = "darkorange",density = 45, angle = 45, border = "black")
+
+# inf: right skewed, left side extreme data are negative
+#hist(aaa$inf, las = TRUE,
+#     main = "Inflation, Consumer Prices (annual %)", 
+#     xlab = "percentage",
+#     col = "goldenrod2",density = 45, angle = 45, border = "black")
+
+# pop: right skewed, outliers are larger than 3 million
+#hist(aaa$pop, las = TRUE,
+#     main = "Total Population", xlab = "people",
+#     col = "chartreuse3",density = 45, angle = 45, border = "black")
+
+# uem: right skewed, etreme value are over 25%
+#hist(aaa$uem, las = TRUE,
+#     main = "Unemployment\n(% of total labor force)", xlab = "percentage", 
+#     col = "cadetblue3",density = 45, angle = 45, border = "black")
+
+# tax: almost symmetric bell shape
+#hist(aaa$tax, las = TRUE,
+#     main = "Tax Revenue (% of GDP)", xlab = "percentage", 
+#     col = "darkorchid3",density = 45, angle = 45, border = "black")
+
+# refuge: right skewed, most countries has data less than 0.1 million, extreme data(outlier) is over 0.3 million
+#hist(aaa$refuge, las = TRUE,
+#     main = "Refugee population\n by original country or territory", 
+#     xlab = "people", col = "lightpink1",density = 45, border = "black")
+
+# urban: left skewed, large amount of country have more urban citizens than suburban does
+#hist(aaa$urban, las = TRUE,
+#     main = "Urban Population (% of total)", 
+#     xlab = "percentage", col = "olivedrab2",density = 45, border = "black")
+
+# lbf: right skewed, extreme value is over 3 billion
+#hist(aaa$lbf, las = TRUE, main = "Total Labor Force", 
+#     xlab = "people", col = "khaki2",density = 45, border = "black")
+
+# mobile: left skewed, some countries have more than 100 subscription per 100 people
+#hist(aaa$mobile, las = TRUE, main = "Mobile cellular subscriptions\nper 100 people", 
+#     xlab = "people", col = "darkslateblue",density = 45, border = "black")
+
+# hlt: right skewed,
+#hist(aaa$hlt, las = TRUE, main = "Health Expenditure per capita\n(current US$)", 
+#     xlab = "people", col = "darkgoldenrod",density = 45, border = "black")
+```
+         
+    For each variable, histograms are introduced to see the distribution of the data. Most variables are right skewed, while "urban" and "mobile" are both left skewed; and "r.gdp" and "tax" are almost symmetric. Variables "gdp", "pop", "refuge" and "lbf" have outliers that are extremely large. I suppose these demographic-related data may influenced by total population of a country, therefore once population has extreme data, the other will correspondingly have problem.
+
+
+# Methods
+## Model Building Summary
+    
+I used backward elimination approach to build my regression model. After the first round of variables selection, four variables, namely "gdp", "r.gdp", "inf" and "hlt" are left in my regression model. Then the regression assumptions are checked with four-variable model. From Cook's distance chart, the distance of several countries sticks out,  however the values are all less than 1. After trying some attempts for improving model, the first-fit model is proved to be a better one.
+At last, new data set, with only three variables' complete data, is introduced to refit the model and derive the final estimates for the linear regression model.
+
+  
+##Variables Determination ---- first-fit model
+I firstly included all candidate variables and get the first regression result. The Cook's distances are all smaller than one, not influential point has to be removed.
+```{r}
+# STEP1: First starting with all candidate variables
+lm01 <- lm(gini~ gdp+r.gdp+inf+pop+uem+tax+refuge+urban+lbf+mobile+hlt, data = aaa)
+summary(lm01)
+# check if there's any Cook's distance is larger than 1
+any(cooks.distance(lm01)>=1)
+```
+The core of backward regression is to delete one variable at a time, the criterion of which is choosing the one with least deterioration when the variable is not included in the model. Take the result in the first fit as an example, "tax" has the largest p-value, implying a least significance of its estimate. Therefore I attempted to drop "tax" in my model.
+  
+Before that, I checked the situations in which I dropped other insignificant variables in the first model, in order to confirm the deletion of "tax" did cause least loss of r-squared.
+```{r}
+# STEP2: Drop the least significant variable, which has the largest p-value in the model one at a time
+# Here deleting "tax" first
+# Deleting variables should have caused R-squared deterioration, however it increases in model without "tax"
+#  which means the drop decision is a good one
+lm02 <- lm(gini~ gdp+r.gdp+inf+pop+uem+refuge+urban+lbf+mobile+hlt, data = aaa)
+c(summary(lm02)$adj.r.squared, summary(lm01)$adj.r.squared)
+# Also check R-squared if drop other insignificant variables in lm01
+c(summary(lm(gini~ gdp+r.gdp+inf+pop+uem+tax+refuge+urban+mobile+hlt,data = aaa))$adj.r.squared, #lbf
+summary(lm(gini~ gdp+r.gdp+inf+uem+tax+refuge+urban+lbf+mobile+hlt,data = aaa))$adj.r.squared, #pop
+summary(lm(gini~ gdp+r.gdp+inf+pop+tax+refuge+urban+lbf+mobile+hlt,data = aaa))$adj.r.squared, #uem
+summary(lm(gini~ r.gdp+inf+pop+uem+tax+refuge+urban+lbf+mobile+hlt,data = aaa))$adj.r.squared, #gdp
+summary(lm(gini~ gdp+r.gdp+inf+pop+uem+tax+refuge+lbf+mobile+hlt,data = aaa))$adj.r.squared, #urban
+summary(lm(gini~ gdp+r.gdp+inf+pop+uem+tax+urban+lbf+mobile+hlt,data = aaa))$adj.r.squared) #refuge
+# the results ranging from (0.2869, 0.3171), all of which are not as high as 0.3173 in lm02, still drop "tax" in the second round
+```
+From the result above, the R-squared increases after dropping "tax", which is a good sign for deletion, since R-squared tend to decrease with fewer variables. Additionally, the same parameter in trial models range from (0.2869, 0.3171), none of which are as high as 0.3173 in model 2. Hence, it is a safe choice to drop "tax" in the second round.
+  
+With the same principle, the final variables are chosen after the work of round three to eight.  
+```{r}
+#####################
+# STEP3: Drop "lbf" #
+#####################
+#lm03 <- lm(gini~ gdp+r.gdp+inf+pop+uem+refuge+urban+mobile+hlt, data = aaa)
+#summary(lm03)
+
+# Also check R-squared if drop other insignificant variables in lm02
+
+#c(summary(lm(gini~ gdp+r.gdp+inf+uem+refuge+urban+lbf+mobile+hlt,data = aaa))$adj.r.squared, #pop
+#  summary(lm(gini~ gdp+r.gdp+inf+pop+refuge+urban+lbf+mobile+hlt,data = aaa))$adj.r.squared, #uem
+#  summary(lm(gini~ r.gdp+inf+pop+uem+refuge+urban+lbf+mobile+hlt,data = aaa))$adj.r.squared, #gdp
+#  summary(lm(gini~ gdp+r.gdp+inf+pop+uem+refuge+lbf+mobile+hlt,data = aaa))$adj.r.squared, #urban
+#  summary(lm(gini~ gdp+r.gdp+inf+pop+uem+urban+lbf+mobile+hlt,data = aaa))$adj.r.squared) #refuge
+
+# the results ranging from (0.2976, 0.3270), none of which are not as high as 0.3283 in lm03, still drop "tax" in the second round
+
+#####################
+# STEP4: Drop "uem" #
+#####################
+#lm04 <- lm(gini~ gdp+r.gdp+inf+pop+refuge+urban+mobile+hlt, data = aaa)
+#summary(lm04)
+
+# Also check R-squared if drop other insignificant variables in lm03
+
+#c(summary(lm(gini~ gdp+r.gdp+inf+uem+refuge+urban+mobile+hlt,data = aaa))$adj.r.squared, #pop
+#  summary(lm(gini~ gdp+r.gdp+inf+pop+uem+refuge+mobile+hlt,data = aaa))$adj.r.squared, #urban
+#  summary(lm(gini~ r.gdp+inf+pop+uem+refuge+urban+mobile+hlt,data = aaa))$adj.r.squared, #gdp
+#  summary(lm(gini~ gdp+r.gdp+inf+pop+uem+urban+mobile+hlt,data = aaa))$adj.r.squared) #refuge
+
+# the results ranging from (0.2999, 0.3337), none of which are as high as 0.334 in lm04, still drop "tax" in the second round
+
+#####################
+# STEP5: Drop "pop" #
+#####################
+#lm05 <- lm(gini~ gdp+r.gdp+inf+refuge+urban+mobile+hlt, data = aaa)
+#summary(lm05)
+
+# Also check R-squared if drop other insignificant variables in lm04
+
+#c(summary(lm(gini~ gdp+r.gdp+inf+pop+refuge+mobile+hlt,data = aaa))$adj.r.squared, #urban
+#  summary(lm(gini~ r.gdp+inf+pop+refuge+urban+mobile+hlt,data = aaa))$adj.r.squared, #gdp
+#  summary(lm(gini~ gdp+r.gdp+inf+pop+urban+mobile+hlt,data = aaa))$adj.r.squared) #refuge
+
+# the results ranging from (0.3031, 0.3256), all of which are as high as 0.335 in lm05, still drop "tax" in the second round
+
+#######################
+# STEP6: Drop "urban" #
+#######################
+#lm06 <- lm(gini~ gdp+r.gdp+inf+refuge+mobile+hlt, data = aaa)
+#summary(lm06)
+
+# Also check R-squared if drop other insignificant variables in lm05
+
+#c(summary(lm(gini~ gdp+r.gdp+inf+urban+mobile+hlt,data = aaa))$adj.r.squared, #refuge
+#  summary(lm(gini~ r.gdp+inf+refuge+urban+mobile+hlt,data = aaa))$adj.r.squared) #gdp
+
+# the results ranging from (0.3066, 0.3124), none of which are as high as 0.322 in lm06, still drop "tax" in the second round
+
+########################
+# STEP7: Drop "refuge" #
+########################
+#lm07 <- lm(gini~ gdp+r.gdp+inf+mobile+hlt, data = aaa)
+#summary(lm07)
+
+# Also check R-squared if drop other insignificant variables in lm06
+
+#c(summary(lm(gini~ gdp+r.gdp+inf+refuge+hlt,data = aaa))$adj.r.squared, #mobile
+#  summary(lm(gini~ r.gdp+inf+refuge+mobile+hlt,data = aaa))$adj.r.squared) #gdp
+
+# the results ranging from (0.2933, 0.2988), none of which are as high as 0.3058 in lm07, still drop "tax" in the second round
+
+########################
+# STEP8: Drop "mobile" #
+########################
+lm08 <- lm(gini~ gdp+r.gdp+inf+hlt, data = aaa)
+summary(lm08)
+# R-squared is 0.2901, the remaining variables all have p-value greater than 0.05, indicating a significant estimate of their beta
+
+```
+     
+      
+    The first fit model- to decide which variables are included in my model- is as shown above. All variables have a significant estimate of beta, the R-squared of the model is 0.2901. Though R-squared is not large enough, all the estimates are significant. Further improvements are tried to increase R-squared.
+    
+    
+## Regression Assumption
+In order to make a good fit of multi-variable linear regression model, the following assumptions need to be checked.
+    
+(1) x values are fixed and are measured without error;
+
+    Some of the variables, for example, population("pop"), urban population("urban") and labor force percentage("lbf") are not fixed since the usage of census method or estimation of the sample. Therefore we cannot say they are measured without any error;
+(2) variables are linearly related;
+
+    Check the scatter plot between every two variables as below. The result turns really same as that from residuals plots. It can be intuitively seen that variables hardly show linear relationship with each other 
+```{r,fig.cap="Scatter plots among variables", fig.width=6, fig.height=6}
+# scatterplot matrix with variables
+#pdf("scatter_matrixlog.pdf", width=6, height=6)
+pairs(aaa[,c("gini", "gdp", "r.gdp","inf","hlt")], las=TRUE, pch=19, col="firebrick",cex=0.5)
+```
+  
+    The following assumptions need further computation to determine whether it is true in this regression:   
+(3) The conditional mean of error should be zero;
+```{r}
+# mean of residuals
+mean(lm08$residuals)
+```
+    From the calculated mean of regression residuals, the answer is 1.619e-16, which is close enough to zero to regard the value as zero. Therefore this assumption meets.   
+(4) The variance of the error term should be constant regardless of x values;
+
+The red line in the right side plot remains around +/-5 and becomes flat when fitted value varies. This means the volatility fluctuates but tends to remain at a certain level.
+```{r, fig.width=8, fig.height=4}
+par(mfrow=c(1,2))
+mar=c(4,6,5,2)
+# standardized residuals vs. y.hat
+plot(lm08$fitted.values, rstandard(lm08), las=TRUE, main="Std. Residuals vs. Fitted Values",
+     ylab="standardized residuals", xlab="fitted values (Gini Index)",  ylim = c(-3,3),
+     cex.main=1.3, cex.lab=1.3, cex.axis=1.3, pch=19, cex=1, col= "firebrick")
+abline(h=c(-2,0,2), lty=2, col="gray50")
+# 
+plot(lm08, which = 1,las=TRUE, main = "Residuals vs Fitted",cex.main=1.3, cex.axis=1.3, cex.lab=1.3)
+```
+
+```{r, fig.width=6,fig.height=8}
+# Residuals plot
+par(mfrow=c(2,2))
+plot(aaa$gdp, rstandard(lm08), pch = 20, col = "firebrick", las = TRUE, 
+     main = "Std. Residuals vs GDP($)", xlab = "GDP(dollars)", ylab = "standardized residuals",
+     ylim=c(-3.1,3.1), cex.main=1.3, cex.axis=1.3, cex.lab=1.3)
+abline(h=c(-2,0,2), lty=2, col="gray", lwd=2)
+plot(aaa$r.gdp, rstandard(lm08), pch = 20, col = "firebrick", las = TRUE, 
+     main = "Std. Residuals vs GDP Growth Rate(%)", xlab = "GDP growth(%)", ylab = "standardized residuals",
+     ylim=c(-3.1,3.1), cex.main=1.3, cex.axis=1.3, cex.lab=1.3)
+abline(h=c(-2,0,2), lty=2, col="gray", lwd=2)
+plot(aaa$inf, rstandard(lm08), pch = 20, col = "firebrick", las = TRUE, 
+     main = "Std. Residuals vs Inflation(%)", xlab = "inflation(%)", ylab = "standardized residuals",
+     ylim=c(-3.1,3.1), cex.main=1.3, cex.axis=1.3, cex.lab=1.3)
+abline(h=c(-2,0,2), lty=2, col="gray", lwd=2)
+plot(aaa$hlt, rstandard(lm08), pch = 20, col = "firebrick", las = TRUE, 
+     main = "Std. Residuals vs Health Expenditure($)", xlab = "health expense($)", 
+     ylab = "standardized residuals",ylim=c(-3.1,3.1), cex.main=1.3, cex.axis=1.3, cex.lab=1.3)
+abline(h=c(-2,0,2), lty=2, col="gray", lwd=2)
+
+```
+From the residual plot, "r.gdp" and "inf" has no pattern of their residual plots, with their residuals ranging from  indicating a relatively good fit in this model. While the residuals of "hlt" has larger deviation when the x-value becomes smaller. As for "gdp", there is an obvious outlier. Cook's distance is used later to see the result after omiting the outlier.
+    
+(5) error(residuals) should be normally distributed;   
+```{r}
+# normal quantile plot of standardized residuals
+plot(lm08, which=2, las=TRUE, cex.main=1.3, cex.lab=1.3, cex.axis=1.3, cex = 0.7, col = "firebrick")
+```
+  This assumptions can be checked by normal Q-Q plot of residuals as above, the residuals are close to the normal quantile line, especially at the middle part. However there do have some outliers on both sides.
+  
+(6) additionally, there is no autocorrelation.
+  However, this part and whether there is multi-collineary problem need to be discussed later.
+  
+## Model Improvement
+Inspiring from the result above, use Cook's distance to see influential data.
+```{r}
+# there is one point has a very large leverage
+#plot(lm08, which=4, las=TRUE,  cex.axis=1.4, cex.lab=1.4)
+plot(lm08, which=5, las=TRUE, cex.axis=1.4, cex.lab=1.4)
+# get new data set omiting the outlier value in gdp
+bbb <- aaa[-(which.max(aaa$gdp)),]
+
+lm09 <- lm(gini~gdp+r.gdp+inf+hlt, data = bbb)
+summary(lm09)
+# check the leverage plot, the solid line is much flatter
+plot(lm09, which=5, las=TRUE, cex.axis=1.4, cex.lab=1.4)
+
+par(mfrow=c(2,2))
+plot(bbb$gdp, lm09$residuals, pch = 20, cex = 1,
+     col = "firebrick", las = TRUE,
+     main = "residuals of regression", 
+     xlab = "GDP(dollars)", ylab = "residuals")
+abline(h=0, lty=2, col="gray", lwd=2)
+plot(bbb$r.gdp, lm09$residuals, pch = 20, cex = 1,
+     col = "firebrick", las = TRUE,
+     main = "residuals of regression", 
+     xlab = "GDP Annual Growth(%)", ylab = "residuals")
+abline(h=0, lty=2, col="gray", lwd=2)
+plot(bbb$inf, lm09$residuals, pch = 20, cex = 1,
+     col = "firebrick", las = TRUE,
+     main = "residuals of regression", 
+     xlab = "Inflation(%)", ylab = "residuals")
+abline(h=0, lty=2, col="gray", lwd=2)
+plot(bbb$hlt, lm09$residuals, pch = 20, cex = 1,
+     col = "firebrick", las = TRUE,
+     main = "residuals of regression", 
+     xlab = "Health Expenditure($)", ylab = "residuals")
+abline(h=0, lty=2, col="gray", lwd=2)
+
+```
+It seems residual plot with "hlt" is more balanced distributed. However, "gdp" shows a right-arrow triangle shape. Maybe it is due to the scale of the data.
+I tried to use log and check again. 
+```{r}
+# add a new column in data bbb
+ccc <- cbind(bbb,"lg.gdp"=log(bbb$gdp))
+#par(mfrow=c(2,2))
+par(mfrow=c(1,2))
+plot(bbb$gdp, lm09$residuals, pch = 20, cex = 1,
+     col = "firebrick", las = TRUE,
+     main = "residuals of regression", 
+     xlab = "GDP(dollars)", ylab = "residuals")
+abline(h=0, lty=2, col="gray", lwd=2)
+lm10 <- lm(gini~lg.gdp+r.gdp+inf+hlt, data = ccc)
+
+plot(ccc$lg.gdp, lm10$residuals, pch = 20, cex = 1,
+     col = "firebrick", las = TRUE,
+     main = "residuals of regression", 
+     xlab = "log of GDP(log of dollars)", ylab = "residuals")
+abline(h=0, lty=2, col="gray", lwd=2)
+#plot(ccc$r.gdp, lm10$residuals, pch = 20, cex = 1,
+#     col = "firebrick", las = TRUE,
+#     main = "residuals of regression", 
+#     xlab = "GDP Annual Growth(%)", ylab = "residuals")
+#abline(h=0, lty=2, col="gray", lwd=2)
+#plot(ccc$inf, lm10$residuals, pch = 20, cex = 1,
+#     col = "firebrick", las = TRUE,
+#     main = "residuals of regression", 
+#     xlab = "Inflation(%)", ylab = "residuals")
+#abline(h=0, lty=2, col="gray", lwd=2)
+#plot(ccc$hlt, lm10$residuals, pch = 20, cex = 1,
+#     col = "firebrick", las = TRUE,
+#     main = "residuals of regression", 
+#     xlab = "Health Expenditure($)", ylab = "residuals")
+#abline(h=0, lty=2, col="gray", lwd=2)
+
+```
+After transforming the data, it is controversial about whether remain "lg.gdp" in the model or not. The good sign is the residual plot converts to randomly distributed below and above zero. However, the p-value of estimated beta of lg.gdp is 0.8620, which is not significant.
+```{r}
+# do new regression
+summary(lm10)
+```
+
+
+Therefore, I used partial F-test to see if it should be removed
+```{r}
+lm11 <- lm(gini~r.gdp+inf+hlt, data = ccc)
+anova(lm11,lm10)
+```
+
+
+The F-value is 0.8619, therefore, we should not reject the null hypothees-- the coefficient of "lg.gdp" is zero--which means "lg.gdp" should be deleted in the final model. Then check if "gdp" itself should be include in the model
+```{r}
+# since the data has been removed, do a new regression
+lm12 <- lm(gini~gdp+ r.gdp+inf+hlt, data = ccc)
+anova(lm11,lm12)
+c(summary(lm11)$adj.r.squared,summary(lm12)$adj.r.squared)
+```
+It seems the best model is the first fit model. And I cannot deal with the data yet. Maybe problems are caused by the collinearity between "gdp" and "r.gdp", or there's some inner relationship between "gdp" and "inf" that further discussion is needed for model improvement.
+ 
+## Model Evaluation
+```{r}
+par(mfrow=c(2,2))
+plot(lm12)
+
+```
+
+
+### Results
+
+### Hypothesis test
+
+# Discussion
+
+# References
+
+(1)	World Bank: http://data.worldbank.org 
+(2)	Naguib, Costanza. The relationship between inequality and GDP growth: An empirical approach. No. 631. LIS Working Paper Series, 2015.
+(3)
+
+
