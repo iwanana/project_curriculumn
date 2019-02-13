@@ -1,1 +1,21 @@
-rrrrr
+This is an assignment that goes through entire process of research.
+
+First we have to guess and found the potential variables that may influence Gini Index.
+Then do research on academic papers and check if there's any supporting evidence. 
+After that, data are collected and downloaded from World Bank http://data.worldbank.org
+
+The final report includes:
+
+1. Executive Summary: short paragraph summarizing the paper
+2. Introduction: define the Gini index and the purpose of the study
+3. Data: 10 explanatory variables and the reason, with relevant descriptive summary
+4. Methods: relevant plots; 
+            model building summary (transformations, variable selection, collinearity, etc.); 
+            check regression assumptions; 
+            model evaluation;
+            relevant hypothesis tests (include hypotheses, test statistic, degrees of freedom, p-value, alpha and conclusion)
+5. Discussion: final regression model; 
+               interpretation of model; 
+               discussion of usefulness of model; 
+               any improvement idea
+6. References
