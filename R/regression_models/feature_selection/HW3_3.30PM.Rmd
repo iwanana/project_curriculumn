@@ -1,0 +1,892 @@
+---
+title: "HW3_Template"
+author: ' Lina Cao , Thursdays 3:30PM '
+date: "SDGB 7844; Prof. Nagaraja; Fall 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# PROBLEM 1 #
+
+###(a) Do some internet research and write a short paragraph in your own words about how the Pineo-Porter prestige score is computed. Include the reference(s) you used. Do you think this score is a reliable measure? Justify your answer.
+
+Pineo-Porter prestige score is a direct measure using the average evaluation made of an occupational title by a national sample to census occupational titles. It consists in constucting a regression equation which has the dependent variables as Pinio-Porter scores for the 88 occupations which overlaps the census list, and has the independent variables---the corresponding income level and educational level indices. The regression weights are then applied to all census occupations(343 in 1951 index and 320 in 1961 index) to derive the prestige scores.
+   
+Source:  
+(1) Deonandan, Raywat, et al. "A comparison of methods for measuring socio-economic status by occupation or postal area." Chronic Diseases and Injuries in Canada 21.3 (2000): 114.  
+(2) Blishen, Bernard R. "A socio‐economic index for occupations in Canada." Canadian Review of Sociology/Revue canadienne de sociologie 4.1 (1967): 41-53.
+
+
+###(b) Create a scatterplot matrix of all the quantitative variables and describe what you see. Use a different symbol for each profession type: no type (pch=3), “bc” (pch=6), “prof” (pch=8), and “wc” (pch=0) when making your plot. For the remainder of this question, we will use the explanatory variables: income, education, and type. Does restricting our regression to only these variables make sense given your exploratory analysis? Justify your answer.
+
+```{r, fig.width=12, fig.height=12}
+# import data
+# setwd("~/Documents/3. applied regression-R/HW3")
+raw <- read.table("prestige.dat",header = TRUE, sep = ",",stringsAsFactors = FALSE)
+# scatterplot matrix for quantitative variables
+# define different symbol for each profession type
+pch.vector <- rep(3, times=nrow(raw))
+pch.vector[raw$type=="bc"] <- 6
+pch.vector[raw$type=="prof"] <- 8
+pch.vector[raw$type=="wc"] <- 0
+# pairs(raw[,c("prestige", "education", "income","women")], las=TRUE, pch=pch.vector, col="firebrick")
+# the result seems cluster together with one color
+# try also separate profession type with color
+col.vector <- rep("black", times=nrow(raw))
+col.vector[raw$type=="bc"] <- "cadetblue"
+col.vector[raw$type=="prof"] <- "firebrick"
+col.vector[raw$type=="wc"] <- "gold"
+mar=c(4,6,5,2)+2
+pairs(raw[,c("prestige", "education", "income","women")], las=TRUE, pch=pch.vector, col=col.vector)
+par(xpd = TRUE)
+legend("bottomright", bty="n", legend=c("prof","bc", "wc","no type"),pch=c(8,6,0,3),col =c("firebrick","cadetblue","gold","black"))
+```
+   
+PS:To make it clearer when consider the pattern of "type", besides using different symbols, I also use different color in the plot.  
+
+All variables except for "type" are numeric values, while "census" is only a code representing an area, therefore the quantitative variables I used are "prestige", "education", "income" and "women".  
+ 
+From the plot, 
+"prestige" and "education" have clearly positive linear relationship, especially when education is not too large; 
+"prestige" and "income" also show a positive linear relationship, but with some outliers. The relationship can also imagined as convex curve, therefore further investigation is needed to decide which relationship should be accept; 
+"prestige" and "women" have little linear relationship because of no pattern of their scatter plot.
+The scatter plots between (1)"education" and "income" and (2)"income" and "women" also indicate their linear relationship while ignoring outliers, the first two variables may have positive linear relationship while the second two may be slightly negative linear related.
+The scatter plot of "education" and "women" hardly shows a pattern, which implies their low chance for having linear relationship.
+
+When take color('type') into consideration, we can observe that different profession types separate apart from each other in each scatter plot, the order of each "layer" in the plots tends to be (from higher to lower) "prof", "wc", "bc", which is consistent with intuition on the prestige of ranking "professor", "white collar" and "blue collar".
+ 
+Therefore, it is wise to include "type" in further study. From the former illustration, "women" shows least contribution to linear relationship, thus the restriction to "income", "education" and "type" as explanatory variables makes sense.
+
+ 
+###(c)Which professions are missing “type”? Since the other variables for these observations are available, we could group them together as a fourth professional category to include them in the analysis. Is this advisable or should we remove them from our data set? Justify your answer.
+
+```{r}
+# there are several "no type" objects
+which(raw$type=="")
+raw[which(raw$type==""),1]
+```
+
+The 34th, 53rd, 63rd and 67th objects have missing "type". The corresponding occupation groups are "atheletes", "newsboys", "babysitters" and "farmers" respectively.
+
+I don't think we should group them into a new profession category. Because from the plot, the black "+" symbols do not cluster together far away from colorful symbols, instead, some of them are in the cluster of "bc". Additionally, four data will be a small sample amount for a new group in regression. Therefore, I would prefer regarding them as observations with missing data and delete them from our dataset.
+
+###(d)Visually, does there seem to be an interaction between type and education and/or type and income? Justify your answer.
+```{r, fig.width=8, fig.height=4}
+# to illustrate "type" with variables
+# do own plot with different color representing different "type"
+par(mfrow=c(1,2))
+mar=c(4,6,5,3)+2
+plot(raw$education,col=col.vector,pch=pch.vector,
+     main = "average education(years)\namong occupation",
+     ylab = "education (years)", xlab = "occupation group")
+plot(raw$income,col=col.vector,pch=pch.vector,
+     main = "average income(dollars)\namong occupation",
+     ylab = "income (dollars)", xlab = "occupation group")
+```
+    
+Yes. 
+EDUCATION: For professional occupations, the education years tend to be higher than other two types, and white collar occupations also have longer education years than blue collars.      
+INCOME: Although not as significant as shown in the scatter plot of "education". Professional occupations earn higher salary than white/blue collar occupations. While the difference between white collar and blue collar on "income"
+is not recognizable.
+
+```{r, fig.width=12, fig.height=6}
+par(mfrow=c(1,2))
+mar=c(4,6,5,3)+2
+lm.bc1 <- lm(prestige ~ education, data=raw,
+            subset=raw$type=="bc")
+lm.prof1 <- lm(prestige ~ education, data=raw,
+              subset=raw$type=="prof")
+lm.wc1 <- lm(prestige ~ education, data=raw,
+            subset=raw$type=="wc")
+plot(raw$education, raw$prestige, col=col.vector, pch=19, cex=0.9,
+     las=TRUE,xlab="average education (years)",
+     ylab="prestige score",
+     main="different regressions\n(education)", cex.main=1.8, cex.axis=1.5, cex.lab=1.5)
+abline(lm.bc1, lwd=2, col = "cadetblue")
+abline(lm.prof1, lwd=2, col="firebrick")
+abline(lm.wc1, lwd=2, col="gold")
+
+lm.bc2 <- lm(prestige ~ income, data=raw,
+            subset=raw$type=="bc")
+lm.prof2 <- lm(prestige ~ income, data=raw,
+              subset=raw$type=="prof")
+lm.wc2 <- lm(prestige ~ income, data=raw,
+            subset=raw$type=="wc")
+plot(raw$income, raw$prestige, col=col.vector, pch=19, cex=0.9,
+     las=TRUE,xlab="average income(dollars)",
+     ylab="prestige score",
+     main="different regressions\n(income)", cex.main=1.8, cex.axis=1.5, cex.lab=1.5)
+abline(lm.bc2, lwd=2, col = "cadetblue")
+abline(lm.prof2, lwd=2, col="firebrick")
+abline(lm.wc2, lwd=2, col="gold")
+rm(lm.bc1, lm.prof1, lm.wc1, lm.bc2, lm.prof2, lm.wc2)
+``` 
+
+From the second picture that fits separate lines for different profession types, the fact that lines are not parallel indicates interaction terms of "Categorical*Numerical" in the regression. But further discussion is required to determine whether the two interaction term should be both included in the fianl model.
+
+
+###(e)Fit a model to predict prestige using: income, education, type, and any interaction terms based on your answer to part (d). Evaluate your model by checking the regression assumptions (including collinearity/multicollinearity) and provide details and conclusions for any hypothesis tests. Include relevant output. Use your answer to part (c) to determine which observations to use in your analysis.
+
+```{r}
+# remove the data that has no type before regression
+clean <- raw[raw$type!="",]
+lm1 <- lm(prestige~education+income+type+education*type+income*type, data=clean)
+summary(lm1)
+```
+# CHECK ASSUMPTIONS 
+(1)Muiticollinearity check
+```{r}
+require(usdm)
+vif(clean[,c("education","income")])
+```
+Two VIFs are close to 1, from the regression estimation, education and income both have positive beta-hat, which is consistent to the positive linear relationship from the scatterplots. There might not be multicollinearity in first model.
+```{r}
+lm0 <- lm(prestige~education, data=clean)
+summary(lm0)
+```
+However, "education" in lm1 is not significant at alpha=0.05 level, while when we only include "education" in the regression, it is significant. Therefore I decided to do the following steps. (And since income's interaction term is significant under 0.05 significance level, "income" and "type" will be in the model.)
+
+(1.1) Try to see if we remove interaction term related to education
+```{r}
+#lm1 <- lm(prestige~education+income+type+education*type+income*type, data = raw)
+lm2 <- lm(prestige~education+income+type+income*type, data = clean)
+anova(lm2,lm1)
+```
+Partial F-test has its p-value greater than 0.05, which means we should not reject H0 (the coefficients of variables related to education is all zero), and omit education's interaction term.
+
+(1.2)New regression result
+```{r}
+#lm2 <- lm(prestige~education+income+type+income*type, data = raw)
+summary(lm2)
+```
+This time, education is, as expected, significant under 0.05 significant level. The insignificance of "'wc" type and the interaction term of "income*typewc" is not problematic if we have decided to use "income" and "type" in the model.  
+
+Next, do the linear regression assumption check based on "lm2".
+(1)Multicollinearity check
+```{r}
+#vif(clean[,c("education","income")])
+```
+Same as the result above, the VIFs are close to 1 and the estimates are positive, consistent with the relationship shown in scatter plot. There is no colinearity problem.
+  
+(2)Fixed "X" and measurement error: it is acknowledged for the original data since it is from countries' Bureau;   
+   
+(3)Linearity: from the scatterplot matrix in (a), the two quantitative variables are linearly related to response variable; 
+    
+(4)Zero conditional mean
+This is an assumption when we do the multi-linear regression. 
+    
+(5) Normally distributed residuals
+```{r, fig.height=10, fig.width=10}
+par(mfrow=c(2,2))
+plot(lm2, las=TRUE, pch=19, cex.main=1.8, cex.axis=1.5, cex.lab=1.5)
+```
+   
+From the top right plot, residuals are slightly s-shaped indicating that the residual distribution is a little thick-tailed. But it is not severe enough to be worried.
+    
+(6)Constant variance of the error term (regardless of "X" values); 
+Neither the residual versus fitted (top left) nor scale-location (bottom left) plot shows the variability of the residuals getting larger as one moves from one side of the plot to the other. 
+When focusing on y-hat, from the top left plot below, residuals almost vary among (-2,2), which implies a constant variance when "X" changes.
+Therefore constant variance assumption meets.
+```{r, fig.width=10, fig.height=10}
+par(mfrow=c(2,2))
+mar=c(4,6,5,2)+0.2
+layout(matrix(c(1,4,2,3), 2, 2, byrow = TRUE))
+# standardized residuals vs. y.hat
+plot(lm2$fitted.values,rstandard(lm2), las=TRUE, pch=19, col= "firebrick",
+     main="Std. Residuals vs. Fitted Values", 
+     ylab="standardized residuals", xlab="fitted values (prestige score)",
+     ylim = c(-3.2,3.2), cex.main=1.5, cex.lab=1.5, cex.axis=1.5,  cex=1)
+abline(h=c(-2,0,2), lty=2, col="gray50")
+
+## standardized residuals vs. EDUCATION
+plot(clean$education, rstandard(lm2), las=TRUE, pch=19, col="firebrick", 
+     main="Std. Residuals vs. EDUCATION", 
+     xlab="Education (years)", ylab="standardized residuals", 
+     ylim=c(-3, 3), cex.axis=1.5, cex.lab=1.5, cex.main=1.5)
+abline(h=c(-2, 0, 2), lty=2, col="gray50")
+# standardized residuals vs. INCOME	
+plot(clean$income, rstandard(lm2), las=TRUE, pch=19, col="firebrick", 
+     main="Std. Residuals vs. INCOME", 
+     xlab="Income (Dollars)", ylab="standardized residuals",
+     ylim=c(-3, 3), cex.axis=1.5, cex.lab=1.5, cex.main=1.5)
+abline(h=c(-2, 0, 2), lty=2, col="gray50")
+
+```
+
+From the bottom residual plots in the graph above, "education" has no pattern of its residuals, with its residuals ranging from (-2,2), indicating a relatively good fit in this model. While the residuals of "income" has larger deviation when the x-value becomes smaller, with several significantly large value. Making logarithm of "income" can be next step(as in part(f)) for generating a better fitted model.
+
+
+###(f)Create a histogram of income and a second histogram of log(income) (i.e., natural logarithm). How does the distribution change?
+```{r, fig.width=10, fig.height=5}
+# add logincome
+logincome <- log(clean$income)
+clean <- cbind(clean,logincome)
+par(mfrow=c(1,2))
+mar=c(4,6,5,2)+0.2
+hist(clean$income, las = TRUE,
+     main = "[1] Income (dollars)",xlab = "dollars",
+     xlim = c(0,30000), ylim = c(0,55), cex.main=1.3,cex.axis=1,
+     col = "cadetblue3",density = 45, angle = 50, border = "black")
+hist(clean$logincome, las = TRUE,
+     main = "[2] Log Income (log(dollars))",xlab = "log dollars", 
+     xlim = c(6,11), ylim = c(0,40), cex.main=1.3,cex.axis=1,
+     col = "cadetblue3",density = 45, angle = 50, border = "black")
+```
+   
+From [1], income shows a right-skewed distribution, however, after taking logarithm in [2], log of income shows a close to symmetric distribution, slightly skewing to left. Therefore, the distribution turns more close to symmetric after taking log.
+
+
+###(g)Fit the model in (e) but this time use log(income) (i.e., natural logarithm) instead of income. Evaluate your model by checking the regression assumptions and details and conclusions for any hypothesis tests. Include relevant output.
+
+After trying different interaction in the model, the final fitted model is the same as that in (e), except for using log(income) instead of income.
+
+```{r}
+# rebuild model
+lm3 <- lm(prestige~logincome+education+type+logincome*type, data = clean)
+summary(lm3)
+```
+As is shown above, the p-values of "logincome" and "education" are both significant, while the categorial term and interaction term both have one situation that has insignificant sign. 
+```{r}
+c("adj.R^2(w/income)"=summary(lm2)$adj.r.squared,
+  "adj.R^2(w/logincome)"=summary(lm3)$adj.r.squared)
+```
+The adjusted R-squared slightly decreases after transformation. Do assumption check before evaluating.
+
+# ASSUMPTION CHECK 
+  
+(1)Multicollinearity check
+```{r}
+require(usdm)
+vif(clean[,c("education","logincome")])
+```
+Similar with the result above, the VIFs are close to 1 and the estimates are positive, consistent with the relationship shown in scatter plot. There is no multicollinearity problem.
+ 
+(2)Fixed "X" and measurement error: it is acknowledged for the original data since it is from countries' Bureau; 
+
+(3)Linearity
+```{r, fig.height=10, fig.width=10}
+# scatter plot again
+pch.vector2 <- rep(3, times=nrow(clean))
+pch.vector2[clean$type=="bc"] <- 6
+pch.vector2[clean$type=="prof"] <- 8
+pch.vector2[clean$type=="wc"] <- 0
+col.vector2 <- rep("black", times=nrow(clean))
+col.vector2[clean$type=="bc"] <- "cadetblue"
+col.vector2[clean$type=="prof"] <- "firebrick"
+col.vector2[clean$type=="wc"] <- "gold"
+mar=c(4,6,5,3)+1
+pairs(clean[,c("prestige", "education", "logincome")], las=TRUE, pch=pch.vector2, col=col.vector2)
+par(xpd = TRUE)
+legend("bottomright", bty="n", legend=c("prof","bc", "wc"),pch=c(8,6,0),col =c("firebrick","cadetblue","gold"))
+```
+   
+From the scatterplot matrix in above, quantitative variables are linearly related to response variable. Especially "prestige-logincome", it has a more close to linear relationship compared to the former upward-curved shape in "prestige-income"; 
+ 
+(4)Zero conditional mean
+This is an assumption when we do the multi-linear regression. 
+ 
+(5) Normally distributed residuals
+```{r, fig.height=10, fig.width=10}
+par(mfrow=c(2,2))
+plot(lm3, las=TRUE, pch=19, cex.main=1.3, cex.axis=1.3, cex.lab=1.3)
+```
+ 
+From the top right plot, residuals are slightly s-shaped on both sides indicating that the residual distribution is a little thick-tailed. But it is not severe enough to be worried. 
+
+(6)Constant variance of the error term (regardless of "X" values); 
+Neither the residual versus fitted (top left) nor scale-location (bottom left) plot shows the variability of the residuals getting larger as one moves from one side of the plot to the other. 
+When focusing on y-hat, from the topleft plot below, residuals almost vary among (-2,2), which implies a same variance when "X" changes.
+Therefore constant variance assumption meets.
+```{r, fig.width=4, fig.height=4}
+#par(mfrow=c(1,2))
+mar=c(6,10,6,4)+0.2
+#layout(matrix(c(1,4,2,3), 2, 2, byrow = TRUE))
+# standardized residuals vs. y.hat2
+plot(lm3$fitted.values,rstandard(lm3), las=TRUE, pch=19, col= "navyblue",
+     main="Std. Residuals vs. Fitted Values", 
+     ylab="standardized residuals", xlab="fitted values (prestige score)",
+     ylim = c(-3.2,3.2), cex.main=1.2, cex.lab=1.2, cex.axis=1.2,  cex=0.8)
+abline(h=c(-2,0,2), lty=2, col="gray50")
+
+# standardized residuals vs. y.hat1
+#plot(lm2$fitted.values,rstandard(lm2), las=TRUE, pch=19, col= "firebrick",
+#     main="Std. Residuals vs. Fitted Values", 
+#     ylab="standardized residuals", xlab="fitted values (prestige score)",
+#     ylim = c(-3.2,3.2), cex.main=1.5, cex.lab=1.5, cex.axis=1.5,  cex=1)
+#abline(h=c(-2, 0, 2), lty=2, col="gray50")
+
+```
+
+
+###(h)Is the model in (e) or (g) better? Justify your answer. Why can’t we use a partial F-test here?
+```{r}
+# r-squared
+r2.1 <- round(summary(lm2)$adj.r.squared, digits = 4)
+r2.2 <- round(summary(lm3)$adj.r.squared, digits = 4)
+# AIC and BIC are chosen since the two non-nested models
+n <- nrow(clean)
+#number of variables in lm1 & lm2
+p1 <- 8 
+p2 <- 6
+sse1 <- (summary(lm1)$sigma^2)*(n-p1-1) # SSE_p for lm1
+sse2 <- (summary(lm2)$sigma^2)*(n-p2-1) # SSE_p for lm2
+# computing AIC
+AIC1 <- n*log(sse1/n)+2*(p1+1)
+AIC2 <- n*log(sse2/n)+2*(p2+1)
+# computing BIC
+BIC1 <- n*log(sse1/n)+(p1+1)*log(n)
+BIC2 <- n*log(sse2/n)+(p2+1)*log(n)
+criterion <- data.frame("a.r.squared"=c(r2.1,r2.2),"AIC"=c(AIC1,AIC2),"BIC"=c(BIC1,BIC2))
+rownames(criterion) <- c("lm2-with INCOME","lm3-with logINCOME")
+library(knitr)
+kable(criterion)
+rm(r2.1, r2.2, n, p1,p2,sse1,sse2,AIC1,AIC2,BIC1,BIC2)
+```
+  
+I think the one with log(income) is better. 
+The difference between the "criterion table" is not significant between two models: lm2 has better adjusted R-squared(larger) and AIC(smaller), but BIC of lm3 is better(smaller).
+
+```{r}
+list("coefficient(INCOME)"=round(summary(lm2)$coefficient,digits = 4),
+  "coefficient(logINCOME)"=round(summary(lm3)$coefficient,digits = 4))
+```
+
+The absolute value differences between the two model's value are quite small, thus, further investigation is needed to make decision.
+
+```{r, fig.width=10, fig.height=5}
+par(mfrow=c(1,2))
+mar=c(4,6,5,2)+0.2
+# standardized residuals vs. INCOME	
+plot(clean$income, rstandard(lm2), las=TRUE, pch=19, col="firebrick", 
+     main="Std. Residuals vs. INCOME", 
+     xlab="Income (Dollars)", ylab="standardized residuals",
+     ylim=c(-3, 3), cex.axis=1.2, cex.lab=1.2, cex.main=1.4)
+abline(h=c(-2, 0, 2), lty=2, col="gray50")
+
+# standardized residuals vs. LOGINCOME	
+plot(clean$logincome, rstandard(lm3), las=TRUE, pch=19, col="navyblue", 
+     main="Std. Residuals vs. LOGINCOME", 
+     xlab="log(Income) (log of Dollars)", ylab="standardized residuals",
+     ylim=c(-3, 3), cex.axis=1.2, cex.lab=1.2, cex.main=1.4)
+abline(h=c(-2, 0, 2), lty=2, col="gray50")
+
+```
+
+The residuals plot of the transformed variable shows a better, random pattern after taking log, therefore, I think lm3 is better.
+
+Partial F test is used when comparing nested models, so this is the main reason we don't use it to compare models. Here we change variables in the model and we use same number of varialbes in the model, therefore the two models are not nested at all.
+
+
+
+# PROBLEM 2 #
+ 
+###(a)Clean your data. Randomly assign your data into training and test sets. Half of the data should be in the training set and half should be in the test set. How many observations are in the training set? Is there any missing data?
+
+```{r}
+medex <- read.table("VietNam.csv",sep = ',',stringsAsFactors = FALSE,header = TRUE)
+# data cleaning
+
+# married status (=1, "yes"; =0, "no")
+# convert into categorical with yes/no in order to make it easier to interpret
+ifmarried <- ifelse(medex$married==1, "yes", "no")
+# same for injury (=1, "yes"; =0, "no")
+ifinjured <- ifelse(medex$injury==1, "yes", "no")
+# same for insurance coverage (=1, "yes"; =0, "no")
+ifinsured <- ifelse(medex$insurance==1, "yes", "no")
+ 
+medex <- data.frame(medex, ifmarried, ifinjured, ifinsured,
+                    stringsAsFactors=FALSE)
+# INSPECT if the change1 is correct
+#head(medex[,c("married","ifmarried")])
+#table(medex[,c("married","ifmarried")])
+# INSPECT if the change2 is correct
+#head(medex[,c("injury","ifinjured")])
+#table(medex[,c("injury","ifinjured")])
+# INSPECT if the change3 is correct
+#head(medex[,c("injury","ifinsured")])
+#table(medex[,c("injury","ifinsured")])
+c(
+# CHECK missing data?
+"missing data?"=any(medex=="NA"),
+# CHECK whether R is treating the numerical variables as numeric
+"numeric as numeric?"=all(apply(medex[,!is.element(colnames(medex), c("sex","ifmarried", "ifinjured","ifinsured"))], 2, is.numeric)),
+# CHECK whether R is treating the categorical variable as categorical
+"character as character?"=all(apply(medex[,c("sex","ifmarried","ifinjured","ifinsured")],2,is.character)))
+
+# CREATE training and testing dataset
+# check total obs size
+N = nrow(medex)
+# since N is an odd number, round to get an integer
+n = ceiling(N/2)
+# evenly separate into two sets
+# to make the result consistent with what I did in homework, I still use set.seed
+set.seed(20)
+sign <- rep(FALSE, times=N)
+sign[sample(1:N, size=n, replace=FALSE)] <- TRUE
+medex <- data.frame(medex, "sign"=sign)
+rm(sign)
+train.x <- subset(medex, sign==TRUE)
+test.x <- subset(medex, sign==FALSE)
+# REMOVE columns that we don't need them when we fit our models
+train <- train.x[,-which(is.element(colnames(train.x),  c("X","married", "injury","insurance","sign")))]
+test <- test.x[,-which(is.element(colnames(test.x),  c("X","married", "injury","insurance","sign")))]
+rm(train.x, test.x)
+dim(train)
+# dim(test)
+```
+There are 13,883 observations in training set. No missing data is found.
+
+
+###(b)Create a table of summary statistics (mean, median, standard deviation, minimum, and maximum) and make scatterplots for the pairs of numerical variables. If you need to transform any data because of potential linearity issues, do that now. Also, if you see any interaction terms which may be useful while doing your exploratory data analysis, you can add them in when you do questions 2c, 2d, and 2e. (Note: since the response variable has already been transformed, do not transform it again.)
+```{r}
+#aaa <- summary(medex[,-c(1,5,13:17)])
+mean <- round(apply(medex[,c(2:4,7:8,10:11)],2,mean,na.rm=TRUE), digits = 4)
+median <- round(apply(medex[,c(2:4,7:8,10:11)],2,median,na.rm=TRUE), digits = 4)
+sd <- round(apply(medex[,c(2:4,7:8,10:11)],2,sd,na.rm=TRUE), digits = 4)
+min <- round(apply(medex[,c(2:4,7:8,10:11)],2,min,na.rm=TRUE), digits = 4)
+max <- round(apply(medex[,c(2:4,7:8,10:11)],2,max,na.rm=TRUE), digits = 4)
+units <- c("times","log(dollar)","years old","years","times","days","days")
+table <- data.frame(units,mean,median,sd,min,max,stringsAsFactors = FALSE)
+# create table of summary statistics when knit
+library(knitr)
+kable(table)
+rm(mean, median, sd, min, max,units)
+```
+
+```{r, fig.height=10,fig.width=10}
+mar=c(2,2,2,2)+0.5
+pairs(medex[,c(3,2,4,7:8,10:11)], las=TRUE,pch=19,cex=0.3)
+# after the first plot, age seems be strange with range of (0,4.59)
+# plot with exp(age)
+#trial <- cbind(medex, exp(medex$age))
+#pairs(trial[,c(3,2,4,7:8,10:11,18)], las=TRUE,pch=19,cex=0.6)
+# the dots are more randomly distributed after the transformation
+# but the regression does not have a larger r-squared
+# I decided not to transform in the end
+```
+
+
+The dots are very dense, therefore no idea of transformation right now.
+PS: I did the following attempts for transformation.
+<1>AGE
+After the first scatterplots, age seems be strange with range of (0,4.60), I tried transformation with exp(age) to let the number make sense. The dots are more randomly distributed after the transformation, but the regression does not have a larger r-squared. Therefore, I decided not to transform in the end.
+<2>COMMUNE
+```{r}
+#t(table(medex$commune))
+#range(medex$commune)
+range(train$commune)
+```
+Since there are 194 categories in "commune", it will be messy if directly include "commune" as a categorial variable. 
+```{r}
+summary(lm(lnhhexp~commune, data=train))$coefficient
+```
+And from the result of regression with commune, commune turns out to be a significant variable, therefore I decide to group communes into a small number of groups.  
+After doing research on what ward each number represents, I found communes are separate into 10 main areas.   
+(source: http://web.worldbank.org/archive/website00002/WEB/PDF/VN98BI-2.PDF)
+```{r}
+data.frame("CLUSTERS"=c("Major Urban Areas","Medium Urban Areas","Minor Urban Areas",
+  "Rural Northern Mountains","Rural Red River Delta","Rural North Central Coast",
+  "Rural South Central Coast","Rural Central Highlands","Rual Southeast","Rural Mekong Delta"),"COMMUNE RANGE"=c("1~20","21~36","37~58","59~79","80~104","105~123","124~139","140~151","152~168","169~194"))
+```
+Because of lacking knowledge of Vietnam's economic situations and other specific development in differenct province, I just simply group the part into "urban" and "rural" areas in my study.
+```{r}
+train$commune <-ifelse(train$commune<=58, "urban","rural") 
+test$commune <-ifelse(test$commune<=58, "urban","rural") 
+```
+
+<3>MULTICOLLINEARITY
+```{r}
+# multicollinearity check
+round(cor(medex[,c(3,2,4,7:8,10:11)]), digits=4)
+require(usdm)
+vif(medex[,c(3,2,4,7:8,10:11)])
+```
+The VIFs are all close to 1, from VIF value, multicollinearity is not a big problem so far, so further regression is needed to see whether the correlation signal is consistent with the estimates.
+
+
+###(c) Use forward selection to choose the “best” model. Explain how you decided which model was “best.”
+
+The criterion of deciding the better model using forward selection is stopping adding variable when its p-value is not significant once added. With the help of the result, I compare RMSE, adjusted R-squared, CP value and BIC to decide the "best" two models, and do partial F test in the end to make final decision.
+
+```{r}
+# package required
+require(leaps)
+forward <- regsubsets(lnhhexp~., data=train, method="forward", nvmax=11)
+summary(forward)
+```
+```{r}
+A <- data.frame("regression"=paste("trial",c(1:11),sep = "_"),
+                "RMSE"=round(sqrt(summary(forward)$rss),digits = 4),
+                "adj.R^2"=round(summary(forward)$adjr2, digits = 4),
+                "C.P"=round(summary(forward)$cp, digits = 4),
+                "BIC"=round(summary(forward)$bic, digits = 4), stringsAsFactors = FALSE)
+library(knitr)
+kable(A)
+rm(A)
+```
+    
+    
+A smaller CP and BIC value is a more preferable sign for the corresponding model to be chosen. The smallest two CPs are from trial_7 and trial_8, while BIC's smallest two numbers are in 5th and 7th trial.  
+The adjusted R-squared stable after the 7th model. One point to be noticed is that the R-squared increase after adding two variables after trail_5, therefore although trial_5 has least BIC, 7th model has a slightly greater adjusted R-squared.  
+I decided to use the 7th model. Also try manually add variables using the result above to see among trail_5 to trail_8, which to regard as the "best".
+
+```{r}
+# trial_5
+#lm15 <- lm(lnhhexp~commune+educ+illness+ifinsured+pharvis, data=train)
+#summary(lm15)
+```
+```{r}
+# trial_6
+lm16 <- lm(lnhhexp~commune+educ+illness+ifinsured+pharvis+ ifmarried, data=train)
+summary(lm16)
+```
+```{r}
+# trial_7
+lm17 <- lm(lnhhexp~commune+educ+illness+ifinsured+pharvis+ifmarried+ age, data=train)
+summary(lm17)
+```
+```{r}
+# trial_8
+#lm18 <- lm(lnhhexp~commune+educ+illness+ifinsured+pharvis+ifmarried+age+ actdays, data=train)
+#summary(lm18)
+```
+Apparently, after adding age into the model from trail_6 to trial_7, "age" is of more significance. Therefore I decide trial_7 as the "best" from forward selection method.
+
+Then using partial F test to compare model lm17 with the model without dropped variables.
+```{r}
+lmall <- lm(lnhhexp~., data=train)
+anova(lm17,lmall)
+#data.frame("a.r.squared"=summary(lm25)$adj.r.squared,"partial Pr(>F)"=anova(lm27,lm28)$Pr[2])
+```
+The p-value of partial F test is much greater than 0.05, so that we should not reject H0( all variables that is to be removed has zero beta estimate). It is  reasonable to drop the rest four variables out of the model.
+  
+Then I check the residual plots for each numerical variables to see if there's any transformation can be made.
+```{r, fig.width=12,fig.height=12}
+par(mfrow=c(2,2))
+mar=c(4,6,5,2)+0.2
+# standardized residuals vs. EDUC	
+plot(train$educ, rstandard(lm17), las=TRUE, pch=19, cex=0.5, col="firebrick", 
+     main="Std. Residuals vs. EDUC", 
+     xlab="average EDUC(years)", ylab="standardized residuals",
+     ylim=c(-4.2, 4.2), cex.main=2, cex.axis=1.8, cex.lab=1.5)
+abline(h=c(-4, 0, 4), lty=2, col="gray50")
+
+# standardized residuals vs. ILLNESS	
+plot(train$illness, rstandard(lm17), las=TRUE, pch=19, cex=0.5, col="firebrick", 
+     main="Std. Residuals vs. ILLNESS", 
+     xlab="illness(times)", ylab="standardized residuals",
+     ylim=c(-4.2, 4.2), cex.main=2, cex.axis=1.8, cex.lab=1.5)
+abline(h=c(-4, 0, 4), lty=2, col="gray50")
+
+# standardized residuals vs. PHARVIS	
+plot(train$pharvis, rstandard(lm17), las=TRUE, pch=19, cex=0.5, col="firebrick", 
+     main="Std. Residuals vs. PHARVIS", 
+     xlab="pharvis(times)", ylab="standardized residuals",
+     ylim=c(-4.2, 4.2), cex.main=2, cex.axis=1.8, cex.lab=1.5)
+abline(h=c(-4, 0, 4), lty=2, col="gray50")
+
+# standardized residuals vs. AGE	
+plot(train$age, rstandard(lm17), las=TRUE, pch=19, cex=0.5, col="firebrick", 
+     main="Std. Residuals vs. AGE", 
+     xlab="age of household head(years old)", ylab="standardized residuals",
+     ylim=c(-4.2, 4.2), cex.main=2, cex.axis=1.8, cex.lab=1.5)
+abline(h=c(-4, 0, 4), lty=2, col="gray50")
+
+```
+   
+All four residual plots have many observations locates between 3 and 4. From summary table in part (b), they all have zero value, try new model with all these four variables taking square root instead of log.
+```{r}
+lm17.new <- lm(lnhhexp~commune+sqrt(educ)+sqrt(illness)+ifinsured+sqrt(pharvis)+ifmarried+sqrt(age), data=train)
+summary(lm17.new)
+summary(lm17)
+```
+
+```{r, fig.width=10,fig.height=10}
+par(mfrow=c(2,2))
+mar=c(4,6,5,2)+0.2
+# standardized residuals vs. EDUC	
+plot(sqrt(train$educ), rstandard(lm17.new), las=TRUE, pch=19, cex=0.5, col="firebrick", 
+     main="Std. Residuals vs. EDUC", 
+     xlab="average EDUC(years)", ylab="standardized residuals",
+     ylim=c(-4.2, 4.2), cex.axis=1.5, cex.lab=1.5, cex.main=1.5)
+abline(h=c(-4, 0, 4), lty=2, col="gray50")
+
+# standardized residuals vs. ILLNESS	
+plot(sqrt(train$illness), rstandard(lm17.new), las=TRUE, pch=19, cex=0.5, col="firebrick", 
+     main="Std. Residuals vs. ILLNESS", 
+     xlab="illness(times)", ylab="standardized residuals",
+     ylim=c(-4.2, 4.2), cex.axis=1.5, cex.lab=1.5, cex.main=1.5)
+abline(h=c(-4, 0, 4), lty=2, col="gray50")
+
+# standardized residuals vs. PHARVIS	
+plot(sqrt(train$pharvis), rstandard(lm17.new), las=TRUE, pch=19, cex=0.5, col="firebrick", 
+     main="Std. Residuals vs. PHARVIS", 
+     xlab="pharvis(times)", ylab="standardized residuals",
+     ylim=c(-4.2, 4.2), cex.axis=1.5, cex.lab=1.5, cex.main=1.5)
+abline(h=c(-4, 0, 4), lty=2, col="gray50")
+
+# standardized residuals vs. AGE	
+plot(sqrt(train$age), rstandard(lm17.new), las=TRUE, pch=19, cex=0.5, col="firebrick", 
+     main="Std. Residuals vs. AGE", 
+     xlab="age of household head(years old)", ylab="standardized residuals",
+     ylim=c(-4.2, 4.2), cex.axis=1.5, cex.lab=1.5, cex.main=1.5)
+abline(h=c(-4, 0, 4), lty=2, col="gray50")
+
+```
+   
+The shape of residual plots seems not change much after transformation. compare AIC and BIC of two models. 
+
+```{r}
+# r-squared
+r2.1 <- round(summary(lm17)$adj.r.squared, digits = 4)
+r2.2 <- round(summary(lm17.new)$adj.r.squared, digits = 4)
+# AIC and BIC are chosen since the two non-nested models
+n <- nrow(train)
+#number of variables in lm1 & lm2
+p1 <- 7 
+p2 <- 7
+sse1 <- (summary(lm17)$sigma^2)*(n-p1-1) # SSE_p for lm1
+sse2 <- (summary(lm17.new)$sigma^2)*(n-p2-1) # SSE_p for lm2
+# computing AIC
+AIC1 <- n*log(sse1/n)+2*(p1+1)
+AIC2 <- n*log(sse2/n)+2*(p2+1)
+# computing BIC
+BIC1 <- n*log(sse1/n)+(p1+1)*log(n)
+BIC2 <- n*log(sse2/n)+(p2+1)*log(n)
+criterion <- data.frame("a.r.squared"=c(r2.1,r2.2),"AIC"=c(AIC1,AIC2),"BIC"=c(BIC1,BIC2))
+rownames(criterion) <- c("lm17","lm17.new-with transformation")
+library(knitr)
+kable(criterion)
+list("coefficient(lm17)"=round(summary(lm17)$coefficient,digits = 4),
+  "coefficient(lm17.new)"=round(summary(lm17.new)$coefficient,digits = 4))
+rm(r2.1, r2.2, n, p1,p2,sse1,sse2,AIC1,AIC2,BIC1,BIC2)
+```
+
+From the table above, the difference is insignificant. lm17 has a slightly larger adjusted R-squared and a smaller AIC than lm17.new. Additionally, the p-value of lm17 performs better (all smaller than 0.001) than lm17.new. There may be other ways to get a better fit, but my finial decision is still lm17. The final model using "FORWARD SELECTION" method is lm17.
+```{r}
+summary(lm17)$call
+```
+
+
+
+###(d) Use backward elimination to choose the “best” model. Explain how you decided which model was “best.”
+
+The criterion of deciding the better model using backward elimination is delete variables with least p-value one at a time. With the help of the result, I compare RMSE, adjusted R-squared, CP value and BIC to decide the "best" two models, and do partial F test in the end to make final decision.
+
+```{r}
+backward <- regsubsets(lnhhexp ~ ., data=train, method="backward", nvmax=11)
+summary(backward)
+```
+```{r}
+# sqrt of residual sum of squares --> RMSE
+#round(sqrt(summary(backward)$rss),digits = 4)
+# R^2 adjusted
+#round(summary(backward)$adjr2, digits = 4)
+# Cp
+#round(summary(backward)$cp, digits = 4)
+# BIC
+#round(summary(backward)$bic, digits = 4)
+
+B <- data.frame("regression"=paste("trial",c(1:11),sep = "_"),
+                "RMSE"=round(sqrt(summary(backward)$rss),digits = 4),
+                "adj.R^2"=round(summary(backward)$adjr2, digits = 4),
+                "C.P"=round(summary(backward)$cp, digits = 4),
+                "BIC"=round(summary(backward)$bic, digits = 4), stringsAsFactors = FALSE)
+library(knitr)
+kable(B)
+rm(B)
+```
+      
+RMSE and adjusted R-squared stable after the 7th model. 
+A smaller CP and BIC value is a more preferable sign for the corresponding model to be chosen. 
+The smallest two CPs are from trial_7 and trial_8, while BIC is smallest (-3994.68) in trial_7. Same as in (c), I manually check the significance level of the regression variables in trial_6 to trial_8 to make final decision.
+```{r}
+# trial_6
+#lm26 <- lm(lnhhexp~commune+educ+illness+age+ifmarried+pharvis, data=train)
+#summary(lm26)
+```
+
+```{r}
+# trial_7
+lm27 <- lm(lnhhexp~commune+educ+illness+age+ifmarried+pharvis+ ifinsured, data=train)
+summary(lm27)
+```
+
+```{r}
+# trial_8
+lm28 <- lm(lnhhexp~commune+educ+illness+age+ifmarried+pharvis+ifinsured+ actdays, data=train)
+summary(lm28)
+```
+
+"actdays" are not significant after being added in the model, so I decided to stop at trail_7, which happens to have the same variables as that in (c), with small difference in the order of variables added in the model. So I omit the process of partial F-test here.  
+```{r}
+summary(lm27)$call
+```
+
+
+###(e) Use the sequential replacement(or called forward and backward stepwise)method to choose the “best” model (seqrep in the regsubsets() function). Explain how you decided which model was “best.”
+```{r}
+# forward stepwise: medv against all other variables in the data frame
+seqrep <- regsubsets(lnhhexp~. , data=train, method="seqrep", nvmax=11)
+summary(seqrep)
+```
+
+```{r}
+C <- data.frame("regression"=paste("trial",c(1:11),sep = "_"),
+                "RMSE"=round(sqrt(summary(seqrep)$rss),digits = 4),
+                "adj.R^2"=round(summary(seqrep)$adjr2, digits = 4),
+                "C.P"=round(summary(seqrep)$cp, digits = 4),
+                "BIC"=round(summary(seqrep)$bic, digits = 4), stringsAsFactors = FALSE)
+library(knitr)
+kable(C)
+rm(C)
+```
+
+Same as the criterion using above, the smallest RMSE(63.6026) and  CP(7.53) and largest adjusted R-squared is from trial_8, and BIC of it is the third smallest. So I chose trail_7, which contains "pharvis", "age", "educ", "illness", "actdays", "commune", "ifmarried", "ifinsured" in the model.
+It is the same as model in lm28, from which we've proved that "actdays" will be insignificant if it is in the model. Hence the model becomes, again, same as that in (c).
+I also tried the 6th result, with variables "pharvis", "age", "educ", "illness", "commune" and "ifmarried", which I think also performs well in BIC and adjusted R-squared. But it cannot pass the partial F-test. The partial F-test has p-value smaller than 0.05, and results in the rejection of all variables tending to remove has zero coefficient. 
+```{r}
+lm36 <- lm(lnhhexp~pharvis+age+educ+illness+commune+ifmarried, data = train)
+anova(lm36,lmall)
+```
+My final decision of the model is still 
+```{r}
+summary(lm17)$call
+```
+
+
+###(f) Compute the test set RMSE for the models you chose in 2c, 2d, and 2e. Compare them to the RMSE values from the training set. Which model performs best? Justify your answer.
+```{r}
+
+# test set R^2_prediction
+prediction.17 <- predict(lm17, newdata=test)
+#prediction.10 <- predict(lm.10, newdata=test.x)
+
+# RMSE prediction
+test.RMSE <- sqrt(sum((prediction.17-test$lnhhexp)^2)/(nrow(test) - 7- 1))
+#sqrt(sum((prediction.10-test.x$medv)^2)/(nrow(test.x) - 10- 1))
+
+c("train.RMSE"=round(summary(lm17)$sigma, digits=4),
+           "test.RMSE"=round(test.RMSE, digits = 4 ))
+
+```
+```{r}
+#summary(lm27)
+```
+The result in (c), (d) and (e) is the same model, no comparision is needed here. 
+As for the model's performance, lm17 is a good fit, because the RMSE of the test set is close to that from train set. 
+
+
+###(g) Check your regression assumptions (including collinearity/multicollinearity) for the model you chose in question 2f. Are the assumptions satisfied? Justify your answer.
+# ASSUMPTION CHECK
+  
+(1)Multicollinearity check
+```{r}
+require(usdm)
+vif(train[,c("educ","illness","age","pharvis","illdays")])
+```
+```{r, fig.height=8,fig.width=8}
+#mar=c(2,2,2,2)+2
+#pairs(train[,c("lnhhexp","educ","illness","age","pharvis","illdays")], las=TRUE,pch=19,cex=0.6)
+```
+Same as the result above, the VIFs are close to 1 and the estimates are positive, consistent with the relationship shown in scatter plot. There is no colinearity problem.
+
+(2)Fixed "X" and measurement error: it is acknowledged for the original data since it is from Vietnam World Bank Survey; 
+
+(3)Zero conditional mean
+This is an assumption when we do the multi-linear regression. 
+
+(4) Normally distributed residuals
+```{r, fig.height=8, fig.width=8}
+par(mfrow=c(2,2))
+plot(lm17, las=TRUE, pch=19,cex=0.7, col="grey50", cex.main=1.5, cex.axis=1.3, cex.lab=1.3)
+```
+From the top right plot, residuals has slightly upward trend when x-axis move to a larger amount. But a good sign is the well-fitted part in the middle. Since the observation number is quite large, it is not severe enough to be worried about the extreme large values since the normally distributed observations take up a large absolute number. Data can still be concluded as normally distributed.
+But it is recommended to deal with extreme values (sicne taking square root of large number seems not a good choice) in later study.
+
+(6)Constant variance of the error term (regardless of "X" values); 
+Neither the residual versus fitted (top left) nor scale-location (bottom left) plot shows the variability of the residuals getting larger as one moves from one side of the plot to the other. 
+
+From the bottom right plot, there is an observation that has a relatively "large"" leverage on the regression. 
+CHECK COOK'S DISTANCE
+```{r}
+any(cooks.distance(lm17)>0.1)
+```
+However, there's no observations whose cook's distance is greater than 0.1, therefore no further remove of observations is needed.
+Hence the assumptions are all satisfied.
+
+
+
+###(h) Interpret the partial slopes and y-intercept of the model you chose in question 2f.
+My model in 2(f) is
+```{r}
+summary(lm17)
+```
+(1) interpreting y-intercept
+```{r}
+exp(lm17$coefficients[1])
+```
+
+Uninsured ("ifinsured"="no") single("ifmarried"="no") citizens who live in rural area("commune"=0) of Vietnam with zero years of education("educ"=0), zero times of illnesses experience("illness"), direct pharmacy visits ("pharvis"=0) within the past year and household head age is zero ("age"=0) will on average spend 9.58 (dollar) as total medical expenditures (exponential of original intercept).
+
+```{r}
+summary(train[,c("educ","illness","pharvis","age")])
+```
+
+All the numerical variables have sample at zero, therefore in this problem, the situation hypothesized above can be reached, even age=0, so this intercept has meaning.
+
+(2) interpreting beta for COMMUNE
+```{r}
+#summary(lm17)$coefficients[2,1]
+(exp(summary(lm17)$coefficients[2,1])-1)*100
+```
+Holding all other variables constant, people living in urban areas will on average spend approximately 83.41% in total medical expenditures more than those who live in rural areas. This can be easily explained by (1)"high expenditure on everything in urban area" and (2)"high awareness of go to doctors and spending money on healthcare" for urban citizens. 
+
+(3) interpreting beta for EDUC
+```{r}
+#summary(lm17)$coefficients[3,1]
+(exp(summary(lm17)$coefficients[3,1])-1)*100
+```
+Holding all other variables constant, one year increase of education years is associated with approximately 4.65% increase in the total medical expenditures. This can be expalined by (1) a longer term of education will increase the awareness of self health care, and be more likely to spend money for medical care and (2) longer years of education tends to imply a higher age, which causea a higher likelyhood of medicare.
+
+(4) interpreting beta for ILLNESS
+```{r}
+#summary(lm17)$coefficients[4,1]
+(exp(summary(lm17)$coefficients[4,1])-1)*100
+```
+Holding all other variables constant, one time increase of illness experienced in the past year is associated with approximately 6.17% decrease in the total medical expenditures. It seems obey the common sense. Since the more times you experienced illness, usually the higher you will spend for treatments. Further investigation is needed.
+
+
+(5) interpreting beta for IFINSURED
+```{r}
+#summary(lm17)$coefficients[5,1]
+(exp(summary(lm17)$coefficients[5,1])-1)*100
+```
+Holding all other variables constant, if one has health insurance coverage, he/she will spend approximately 4.73% in total medical expenditures more than those who don't have insurance coverage. If the expenditure means the part people have to pay before  compensation, it makes sense. Because people would be more likely to use a better and more expensive treatment if they were covered by insurance.
+
+(6) interpreting beta for PHARVIS
+```{r}
+summary(lm17)$coefficients[6,1]
+(exp(summary(lm17)$coefficients[6,1])-1)*100
+```
+Holding all other variables constant, one time increase of direct pharmacy visit is associated with approximately 1.47% increase in total medical expenditures. This can be intuitively understood, because everytime you visit the pharmacy you must have something wrong and thus expenditure will be made.
+
+(7) interpreting beta for IFMARRIED
+```{r}
+#summary(lm17)$coefficients[7,1]
+(exp(summary(lm17)$coefficients[7,1])-1)*100
+```
+Holding all other variables constant, married status (not single) is associated with approximately 4.38% decrease in the total medical expenditures. This may be caused by married people can take care of each other and have less chance to pay medical expenditure.
+
+(8) interpreting beta for AGE
+```{r}
+#summary(lm17)$coefficients[8,1]
+(exp(summary(lm17)$coefficients[8,1])-1)*100
+```
+Holding all other variables constant, one year increase of the age of household head is associated with approximately 2.21% increase in the total medical expenditures. This can also be explained same as the situation in "EDUC", the older person is, the higher chance he/she will spend a high amount of medical expenditure.
+
+
+
