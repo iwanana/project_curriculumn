@@ -1,0 +1,5 @@
+
+This time we deal we financial time series data set, such as S&P500, ETF and portfolio,
+change the sharpe ratio to get a better result of our investment.
+
+The methods we use is to calculate excess return on our mixed portfolio.
