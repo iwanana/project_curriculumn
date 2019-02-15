@@ -1,0 +1,394 @@
+---
+title: "HW_2_Template"
+author: ' Lina Cao , Thursdays 1:15PM '
+date: "SDGB 7844; Prof. Nagaraja; Fall 2017"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Question 1
+
+What is a census tract?  How many census tracts are in New York County? (Provide the citations for references used.)
+
+  The "Census Tract" is an area roughly equivalent to a neighborhood established by the Bureau of Census for analyzing populations.A census tract is smaller than a City but larger than a Block Group or Census Block. The Bureau of Census generally encompass a population between 2,500 to 8,000 people in a "Census Tract".
+  
+  There are 288 census tracts in New York County in total. Bureau of Census describes census tracts as "relatively permanent", but they do change over time. I chose the data from 2010.
+  Source:United States Census Bureau
+  https://www.census.gov/geo/maps-data/maps/2010ref/st36_tract.html
+  https://parks.ny.gov/shpo/tax-credit-programs/documents/ListofEligibleCensusTracts.pdf
+  https://www2.census.gov/geo/maps/dc10map/tract/st36_ny/c36061_new_york/DC10CT_C36061_CT2MS.txt
+
+## Question 2
+
+Describe one advantage and one disadvantage of computing estimates after combining 5-years of data.
+
+ADVANTAGE
+  Small deviation of difference years' census can be balanced due to the combination.
+DISADVANTAGE
+  We cannot find the consecutive year change in a certain census tract, only five-year-change can be found.
+
+## Question 3
+
+Download the ACS data.  Clean the data and merge the tables into one data frame, each row representing a census tract, each column representing one of the Townsend variables (keep the geography columns).  For each variable, construct a histogram and compute the following summary statistics: mean, median, standard deviation, maximum, and minimum.  Describe the shape of each histogram.
+
+```{r}
+# set the working directory where the first csv file in
+setwd("F:/0000Fordham New Life/4 SM&C.statistics methods and computation I/HW/ACS_15_5YR_DP03") 
+# read the first table
+raw1 <- read.csv("ACS_15_5YR_DP03_with_ann.csv",stringsAsFactors = FALSE,sep=",")[-1,]
+# read the second table directly using its root
+raw2 <- read.csv("F:/0000Fordham New Life/4 SM&C.statistics methods and computation I/HW/ACS_15_5YR_DP04/ACS_15_5YR_DP04_with_ann.csv",stringsAsFactors = FALSE,sep=",")[-1,] 
+## The second row in each csv file is both description for the variable, therefore I omit both row while reading the data
+
+# extract variable columns
+data1 <- raw1[,c("GEO.id2","HC03_VC07")]
+data2 <- raw2[,c("GEO.id2","HC03_VC66","HC03_VC85","HC03_VC113")]
+
+####################     Data Dictionary      #####################
+###  Geo.id2 : geography id number (simplified)                 ###
+###  Table DP03, HC03_VC07 : employment status (unemployed)     ###
+###  Talbe DP04, HC03_VC66 : housing tenture (rent/occupied)    ###
+###  Talbe DP04, HC03_VC85 : no vehicles available              ###
+###  Talbe DP04, HC03_VC113 : occupants per room (one or less)  ###
+###################################################################
+
+# merge them in one data frame
+mdata <- merge (data1, data2)
+# change the column name of each variable
+colnames(mdata) <- c("GEO.id2","unemp","rent","car","oc") 
+# check data if there is any character left
+tail(mdata)
+
+# change "-" into "NA"
+mdata[mdata=="-"] <- NA
+
+# change the data type of the variables from character into numeric
+unemp <- as.numeric(mdata$unemp)
+rent <- as.numeric(mdata$rent)
+car <- as.numeric(mdata$car)
+oc <- as.numeric(mdata$oc)
+# transform oc to get overcrowded occupancy
+oc <- 100-oc
+# combine the numeric variable together
+mdata.num <- data.frame(mdata$GEO.id2,unemp,rent,car,oc,stringsAsFactors = FALSE)
+
+# histogram
+par(mfrow=c(2,2))
+hist(unemp,  las=TRUE, 
+     col="cadetblue", density=60, angle=45, border="black",
+     main="Unemployment Status",
+     xlab="unemployment", ylab="frequency")
+hist(rent,  las=TRUE, 
+     col="firebrick2", density=60, angle=45, border="black",
+     main="Housing Tenture Status",
+     xlab="rent/occupied", ylab="frequency")
+hist(car,  las=TRUE, 
+     col="gold", density=60, angle=45, border="black",
+     main="Vehicle Owned Status",
+     xlab="no vehicle", ylab="frequency")
+hist(oc,  las=TRUE, 
+     col="seagreen3", density=60, angle=45, border="black",
+     main="Room overcrowded Status",
+     xlab="Overcrowded (more than one occupant per room)", ylab="frequency")
+
+# since standard deviation is not included in summary() function
+# I choose to calculate the required explantory statistics first
+# and merge them into a new data.frame to apply kable()
+mean <- apply(mdata.num[,c("unemp","rent","car","oc")],2,mean,na.rm=TRUE)
+median <- apply(mdata.num[,c("unemp","rent","car","oc")],2,median,na.rm=TRUE)
+standard_deviation <- apply(mdata.num[,c("unemp","rent","car","oc")],2,sd,na.rm=TRUE)
+max <- apply(mdata.num[,c("unemp","rent","car","oc")],2,max,na.rm=TRUE)
+min <- apply(mdata.num[,c("unemp","rent","car","oc")],2,min,na.rm=TRUE)
+table <- data.frame(mean,median,standard_deviation,max,min,stringsAsFactors = FALSE)
+
+# create table of summary statistics when knit
+# http://rmarkdown.rstudio.com/lesson-7.html
+library(knitr)
+kable(table)
+rm(mean, median, standard_deviation,max,min)
+
+```
+
+From the histogarm above, 
+1. the unemployment status and room overcrowded status both show a right skewed curve;
+2. the housing tenture status and vehicle owned status both illustrate a left skewed curve.
+
+
+## Question 4
+
+How many observations are missing for each variable? What percentage of census tracts do not have complete data?  Is this a problem for our analysis? Justify your answer. (Note: do not delete tracts with missing data.)
+
+```{r}
+# missing data for each variable
+t1 <- sum(is.na(unemp))
+t2 <- sum(is.na(rent))
+t3 <- sum(is.na(car))
+t4 <- sum(is.na(oc))
+t1
+t2
+t3
+t4
+rm(t1,t2,t3,t4)
+
+# pick out rows with no missing data in any variable
+mdata.rectangle <- mdata[complete.cases(mdata.num),]
+# derive rows of complete data and total data
+m <- nrow(mdata.rectangle)
+n <- nrow(mdata.num)
+# calculate the fraction of full data to total row number
+1-m/n
+rm(m,n)
+# OR simply use the code of rows with missing data in any variable (incompleted rows)
+nrow(mdata[!complete.cases(mdata.num),])/nrow(mdata.num)
+
+
+```
+
+There are 5 missing data in unemployment, while 8 missing data in house tenture, car occupancy and room overcrowded variable.
+The groups with incomplete data takes about 2.78% of total data set.
+The percentage of the incomplete data is a small amount, I don't think it will effect our analysis. 
+
+
+## Question 5
+
+Construct a scatterplot matrix of the four variables.  Are they linearly related?  Now, transform the variables as given in step (a), adding the transformed variables to your data frame.  Make another scatter plot matrix with the transformed variables.  Are they linearly related?  Construct a correlation matrix of the transformed variables and describe your results.  
+
+```{r}
+# resets the plotting parameters
+#dev.off() 
+
+# first scatterplot matrix
+pairs(mdata.num[,c("unemp", "rent", "car","oc")], 
+      pch = 19, col = "tomato4",
+      las=TRUE, 
+      main="Scatterplot Matrix (before adjusting)", cex = 0.72)
+
+# transform variables
+unemp.a <- log(unemp+1)
+oc.a <- log(oc+1)
+rent.a <- log(rent+1)
+car.a <- car^0.5
+# add new columns to the former data frame
+mdata.a <- data.frame(mdata.num,unemp.a,rent.a, car.a, oc.a,stringsAsFactors = FALSE)
+
+# second scatterplot matrix
+pairs(mdata.a[,c("unemp.a", "rent.a", "car.a","oc.a")], 
+      pch = 19,col = "mediumorchid4",
+      las=TRUE, 
+      main="Scatterplot Matrix (after adjusting)", cex = 0.72)
+
+# correlation matrix of the data after transformation
+# use the complete data to generate correlation, avoid NA of each correlation
+cor(mdata.a[,6:9],use = "complete.obs")
+
+
+```
+
+
+The variables are not linearly related, because the dots in the scatterplot are randomly distributed from the first scatterpolt matrix.  
+
+FROM THE SCATTER PLOT
+After transform variables, from the second matrix, variables are more clustered, except for the relationship of room overcrowded and unemployment. 
+Although the linear relation is not relatively obvious, the result after transforming variables can be reported to be more linear related to some extent.
+
+FROM CORRELATION MATRIX
+Consist to the intuitive impression from the plot, the correlation between each variable is not high. Unemployment rate and housing rent rate, car owned rate and overcrowded rate, as well as room overcrowded rate with house rent and car owned rate are all weakly correlated, while car owned rate and house rented rate is the most correlated.
+
+
+## Question 6
+
+Compute the Townsend index value for each census tract.  Add the index to your data frame. For how many census tracts are you able to compute the Townsend index?  Why does this number not equal the total number of census tracts? 
+
+```{r}
+# geographic region mean for each variable
+mean.unemp <- mean(unemp.a,na.rm = TRUE)
+mean.oc <- mean(oc.a,na.rm = TRUE)
+mean.rent <- mean(rent.a,na.rm = TRUE)
+mean.car <- mean(car.a,na.rm = TRUE)
+# standard deviation for each variable
+sd.unemp <- sd(unemp.a,na.rm = TRUE)
+sd.oc <- sd(oc.a,na.rm = TRUE)
+sd.rent <- sd(rent.a,na.rm = TRUE)
+sd.car <- sd(car.a,na.rm = TRUE)
+# standardize variables for each region
+# (unemp.a-mean.unemp)/sd.unemp
+
+# sum all standardized variables up
+Townsend = (unemp.a-mean.unemp)/sd.unemp + (oc.a-mean.oc)/sd.oc + (rent.a-mean.rent)/sd.rent + (car.a-mean.car)/sd.car
+
+# add new column into former data frame mdata.a
+mdata.t <- data.frame(mdata, Townsend,stringsAsFactors = FALSE)
+
+# calculate how many townsend index generated
+w <- sum(!is.na(Townsend))
+w
+# the fraction can be calculated by 1-nrow(w)/nrow(mdata.t)
+w/nrow(mdata.t)
+rm(w)
+
+```
+
+Totally 280 census tract can derive Townsend Index, which is 97.22% of total census tracts.
+As long as there is data missing in one census tracts, the "NA" will prevent the calculation of Townsend index. Therefore, the Townsend will also disappear in the census tracts of which any variable value is missing. Thus the number of total Townsend index will be less than the number of census tracts.
+
+## Question 7
+
+Identify which census tract is the most deprived and which is the least deprived (give the census tract number and deprivation index level).  Based on your results, would you like to live in the least deprived census tract?  Justify your answer.  
+
+```{r}
+# use which.max / which.min to derive which row in Geo.id2 should be chosen
+deprived.most <- mdata.t$GEO.id2[which.max(Townsend)]
+deprived.least <- mdata.t$GEO.id2[which.min(Townsend)]
+deprived.most
+deprived.least
+
+# extract the data of the least deprived census tract
+mdata.t[which(mdata.t$GEO.id2==deprived.least),]
+# rm(deprived.least,deprived.most)
+
+```
+
+The geography ID of the most deprived census tract is 36061028500.
+The geography ID of the least deprived census tract is 36061021703   
+The data in the least deprived tract shows zero in unemployment rate, housing tenture rate and car owned rate, while the overcrowded status is considerably high, which means the house will be too crowded to live in. I don't think I want to live in such a place in spite of the low unemployment rate. 
+
+
+## Question 8
+
+The ACS data includes not only estimates but their margins of error which we ignored in our calculations.  What are the implications?
+
+Margin of error (MOE) is an estimate of the sampling error for each value, sum, or ratio reported for the sample population in ACS (American Community Survey). Usually it can be the result of the difference between the upper and lower limits of the sample estimate's confidence interval.
+MOE is used to describe the accuracy of estimates calculated by ACS. Although MOE increases for smaller areas, in this task, the numbers of each variable are only used to compare the relationship between each census tract, not for accurate value. 
+Therefore, ignoration of MOE can simplify the calculation process.
+(source: http://www.esri.com/news/arcuser/0708/demoarticle.html )
+
+
+## Question 9
+
+Construct a map color-coded by the deprivation index value.  Include a legend and plot title.  Describe the patterns you see, especially in relation to what you know about neighborhoods in New York City.  What does the large rectangle in the middle of the map represent?
+
+```{r}
+#########
+### 9 ###
+#########
+
+# load required packages
+library(RColorBrewer)
+library(rgdal) 
+# read data for mapping
+setwd("F:/0000Fordham New Life/4 SM&C.statistics methods and computation I/HW")
+nyc.map <- readOGR(dsn="tl_2015_36_tract", layer="tl_2015_36_tract")
+# View(nyc.map)
+# check the variable name of geography number, which turns to be "GEOID"
+# "GEOID" is used to extract geography information by matching the geo ID in mdata.t
+nycty <- subset(nyc.map, is.element(nyc.map$GEOID,mdata.t$GEO.id2))
+# set row names of data slot of nycty as GEOID
+row.names(nycty) <- as.character(nycty$GEOID)
+row.names(mdata.t) <- mdata.t$GEO.id2
+# extract data from nycty by row name (GEOID)
+mdata.t <- mdata.t[row.names(nycty),]
+# make basic plot of New York County
+###    plot(nycty)
+
+# check data range in order to separate index into groups
+range(mdata.t$Townsend, na.rm=TRUE)
+# -28.59 to 5.04 as min and max shown before
+
+# break up range into equal length intervals 
+#    seq(from=-30, to=6, length=10)  
+# eg (2,6]  --> from 2 to 6, including 6 but not including 2
+
+# use cut() to convert a numeric vector into a factor vector
+breaks <- cut(mdata.t$Townsend, breaks=seq(from=-30, to=6, length=10))
+# check list of categories
+#    levels(breaks)    
+
+
+#   table(breaks)    # include several interval with no data
+
+# color palette
+color.palette <- rev(brewer.pal(n=length(levels(breaks)),"Spectral"))
+color.coding <- color.palette[as.numeric(breaks)]
+
+
+# plotting color range
+# display.brewer.pal(length(levels(breaks)), "Spectral")
+
+# basic map
+
+plot(nycty, col=color.coding, main = "Townsend Index in New York County\n(Source: ADS data, 2015)")
+# or I can label the title of the polt mannually
+# use locator() to get the rough place I want to locate the "title"
+## code ##
+# text(-74.16071, 40.87279, cex=1, 
+#  labels=c("Townsend Index in New York County\n(Source: ADS data, 2015)"))
+
+## use c() function to add group with no data ("white") in the legend 
+legend("bottomright", 
+       legend=c(levels(breaks), "no data"), 
+       fill=c(color.palette, "white"), cex=0.7, bty="n", y.intersp=1.2, ncol=2)
+
+
+##########
+### 10 ###
+##########
+
+# I found the tract number from the pdf first and index the related GeoId in nycty
+# cencus tract is 145
+# source: https://www2.census.gov/geo/maps/dc10map/tract/st36_ny/c36061_new_york/DC10CT_C36061_002.pdf
+# and then find the GEOID of which the tract number is 145, that is 36061014500
+
+# sort data via Townsend Index
+# order() is used to choose which variable is the criteria to sort
+sorted <- mdata.t[order(mdata.t$Townsend,decreasing = TRUE),]
+# derive the number of the order
+which(sorted$GEO.id2=="36061014500")
+
+
+# to get the boundary coordinates of map area, ie the coordinates from slot "bbox" min/max
+# nycty@bbox  
+#         min       max
+# x -74.04729 -73.90700
+# y  40.67955  40.88221
+
+# the x, y coordinate is x=-73.984940 , y= 40.771786 for our classroom
+# i.e x0=-73.984940 , y0= 40.771786
+
+nycty$GEOID <- as.character(nycty$GEOID)
+points(coordinates(nycty["36061014500",]), cex=1.5, pch=20)
+arrows(x0=-74.058 , y0= 40.78, 
+       x1=-73.984940 , y1= 40.771786, 
+       length=0.15, lwd=2.25)
+## x0, y0 used to change the size and angle of the arrow
+## locator can also be used to get a rough place where the arrow starts
+
+# label 140 West 62nd ST, our classroom
+text(-74.12,40.78, cex=1, labels=c("140 W. 62nd St"))
+
+```
+
+In the map I derived, it seems most of the New York County is more deprived, except for an census tract in upper east part. 
+The large rectangle in the middle of the map represents the Central Park, where no residents live, therefore no census data can be collected. Hence the heat map is white, with no data in it.
+
+
+## Question 10
+
+In which census tract is 140 W. 62nd St. (where we have class)?  What is the deprivation level rank (where a rank of 1 is the most deprived)?   Mark it on the map (use the computer, not by hand) and add it to your legend.   (Provide the citations for  references used.)
+
+The census tract number of our classroom is 145.
+The source of the tract number is:
+https://www2.census.gov/geo/maps/dc10map/tract/st36_ny/c36061_new_york/DC10CT_C36061_002.pdf
+
+The deprived level rank of 140W 62nd St is the 63rd among 280 tracts (which has full data in each variable).
+
+
+## Question 11
+
+New York County is an urban county, however New York state has roughly 22 counties classified as rural (e.g., Allegany, Essex, Otsego, Sullivan).  Would it make sense to compute the Townsend index values for all census tracts within New York state combined?  Why or why not?
+
+I don't think it make sense.
+Since urban and rural county will have many differences from many aspect, for example GDP, average income per capita and even  etc. All of them can separate urban and rural county's unemployment rate, car owned rate and so forth. Therefore if we mix them and calculate mean and standard deviation for the total New York state, some extreme value might change mean and derive a larger standard deviation. Both will affect when standardize the data before final calculation of Townsend Index. And generate more factors we should take into consideration. Hence I think we should calculate by different counties( urban and rural) separately.
+
