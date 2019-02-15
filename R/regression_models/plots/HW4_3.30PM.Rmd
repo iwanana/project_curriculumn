@@ -1,0 +1,590 @@
+---
+title: "HW4_Template"
+author: ' Lina Cao , Thursdays 3:30PM '
+date: "SDGB 7844; Prof. Nagaraja; Spring 2018"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Question 1
+
+### Based on the variable “Decision”, fill out the contingency table below. What percentage of dates ended with both people wanting a second date?
+
+```{r}
+sd <- read.csv("SpeedDating.csv",sep = ",", header = TRUE, stringsAsFactors = FALSE)
+#head(sd)
+#summary(sd)
+#dim(sd)
+
+# CHECK PartnerYes and Attractive: already numeric
+#is.numeric(sd$PartnerYesF)
+#is.numeric(sd$PartnerYesM)
+#is.numeric(sd$AttractiveF)
+#is.numeric(sd$AttractiveM)
+#is.numeric(sd$DecisionM)
+#is.numeric(sd$DecisionF)
+
+# CHECK missing data in "Decision"
+any(sd$DecisionM=="NA")
+any(sd$DecisionF=="NA")
+```
+Since there is no missing data in "DecisionM" and "DecisionF", we can handle the problem directly.
+```{r}
+# filling contigency table
+A <- table(sd$DecisionM,sd$DecisionF)
+rownames(A) <- c("by Male- NO","by Male- YES")
+colnames(A) <- c("by Female- NO","by Female- YES")
+A
+# proportion calculation
+A[2,2]/sum(A)
+rm(A)
+```
+
+Therefore, with some calculation, about 22.83% of dates ended with both people wanting a second date.
+
+
+## Question 2
+
+A second date is planned only if both people within the matched pair want to see each other again. Make a new column in your data set and call it “second.date”. Values in this column should be 0 if there will be no second date, 1 if there will be a second date. Construct a scatterplot for each numerical variable where the male values are on the x-axis and the female values are on the y-axis. Observations in your scatterplot should have a different color (or pch value) based on whether or not there will be a second date. Describe what you see. (Note: Jitter your points just for making these plots.)
+
+```{r}
+# create a zero vector
+second.date <- rep(0, times=nrow(sd))
+# replace 0 by 1 where both F&M reply 1
+second.date[which(sd$DecisionF==1 & sd$DecisionM==1)] <- 1
+# combine data
+sdnew <- cbind(sd, second.date)
+# CHECK result
+# head(sd)
+
+
+# CONSTRUCT scatterplot
+# separate by color
+col.vector <- rep("#00990070", times=nrow(sd))
+col.vector[second.date==1] <- "#99000070"
+#col.vector[second.date==0] <- "#00990070"
+rm(second.date)
+```
+```{r, fig.width=9, fig.height=3, out.width=9, out.height=3}
+mar=c(4,4,10,1)+0.2
+par(mfrow=c(1,3))
+# LIKE
+plot(sd$LikeM, sd$LikeF, las = TRUE, col=col.vector, pch=19, cex=1.2,
+     main = "LikeM vs LikeF\n(1=least, 10=most)",cex.main=1.2,
+     xlab = "LikeM", ylab = "LikeF", cex.lab=1)
+# PARTNERYES
+plot(sd$PartnerYesM, sd$PartnerYesF, las = TRUE, col=col.vector, pch=19, cex=1.2,
+     main = "PartnerYesM vs PartnerYesF\n(1=least probable, 10=most probable)",cex.main=1.2,
+     xlab = "PartnerYesM", ylab = "PartnerYesF", cex.lab=1)
+# Age
+plot(sd$AgeM, sd$AgeF, las = TRUE, col=col.vector, pch=19, cex=1.2,
+     main = "AgeM vs AgeF",cex.main=1.2,
+     xlab = "AgeM", ylab = "AgeF", cex.lab=1)
+# add label
+legend("bottomright", legend=c("2nd date", "no 2nd date"), bty="n", col=c("#99000070", "#00990070"), pch=19, cex=1.4)
+```
+(1) Like: the red dots cluster at top right, indicating the higher "Like" score one gives to the partner, a greater chance they will have a second date. (But it is not always the case, even in high level there are cases where people would not like to have a second date.) 
+(2) PartnerYes: same as in "Like", the groups that want to have a second date all give high score in "PartnerYes". And the dots are more evenly distributed, 
+(3) Age: most people in the experiment are younger than or equal to 35 years old, red dots appears more close to the "Y=X" line. This may tell us, second date may be more likely to happen if two people are at a similar age.
+
+```{r, fig.width=9, fig.height=3, out.width=9, out.height=3}
+mar=c(4,4,10,1)+0.2
+par(mfrow=c(1,3))
+# Attractive
+plot(sd$AttractiveM, sd$AttractiveF, las = TRUE, col=col.vector, pch=19, cex=0.8,
+     main = "AttractiveM vs AttractiveF\n(1=awful, 10=great)",cex.main=1.2,
+     xlab = "AttractiveM", ylab = "AttractiveF", cex.lab=1)
+# Sincere
+plot(sd$SincereM, sd$SincereF, las = TRUE, col=col.vector, pch=19, cex=0.8,
+     main = "SincereM vs SincereF\n(1=awful, 10=great)",cex.main=1.2,
+     xlab = "SincereM", ylab = "SincereF", cex.lab=1)
+# INTELLIGENT
+plot(sd$IntelligentM, sd$IntelligentF, las = TRUE, col=col.vector, pch=19, cex=0.8,
+     main = "IntelligentM vs IntelligentF\n(1=awful, 10=great)",cex.main=1.2,
+     xlab = "IntelligentM", ylab = "IntelligentF", cex.lab=1)
+
+# add label
+legend("bottomright", legend=c("2nd date", "no 2nd date"), bty="n", col=c("#99000070", "#00990070"), pch=19, cex=1.4)
+```
+(4) Attractive: red dots appears in the region where both gender gives "Attractive"(to the other person) higher than 5, and the higher their score is, the higher frequency a second date will occur.
+(5) Sincere: most candidates give scores between 6-10 in both gender, people tends to show sincere in speed dating to increase a second date chance. Since 6-10 is a relatively high score range, a second date is not easy to be seen on the plot.
+(6) Intelligent : almost all female give score within 4 to 10, while from the score that given by male, the dots are evenly distributed from 1 to 10. The more close two people give each other on "intelligence", the higher chance they will have a second date. 
+
+```{r, fig.width=9, fig.height=3, out.width=9, out.height=3}
+mar=c(4,4,10,1)+0.2
+par(mfrow=c(1,3))
+# FUN
+plot(sd$FunM, sd$FunF, las = TRUE, col=col.vector, pch=19, cex=0.8,
+     main = "FunM vs FunF\n(1=awful, 10=great)",cex.main=1.2,
+     xlab = "FunM", ylab = "FunF", cex.lab=1)
+# AMBITIOUS
+plot(sd$AmbitiousM, sd$AmbitiousF, las = TRUE, col=col.vector, pch=19, cex=0.8,
+     main = "AmbitiousM vs AmbitiousF\n(1=awful, 10=great)",cex.main=1.2,
+     xlab = "Ambitious", ylab = "AmbitiousF", cex.lab=1)
+# SHARED INTEREST
+plot(sd$SharedInterestsM, sd$SharedInterestsF, las = TRUE, col=col.vector, pch=19, cex=0.8,
+     main = "SharedInterestsM vs SharedInterestsF\n(1=awful, 10=great)",cex.main=1.2,
+     xlab = "SharedInterestsM", ylab = "SharedInterestsF", cex.lab=1)
+
+# add label
+legend("bottomright", legend=c("2nd date", "no 2nd date"), bty="n", col=c("#99000070", "#00990070"), pch=19, cex=1.4)
+```
+
+(7) Fun: second date cases appear in the region where both gender give partner a high score of "Fun". Most data cluster in the area from 4 to 10 for "FunF" and 5 to 10 for "FunM", on average, male give higher "Fun" score to female than female do.
+(8) Ambitious: there will probably be a second date when both gender rate the level of their partner higher than 5 on "Ambitious", but still several observations occur in other region. When the total of AmbitiousM & F is less than 10, there will no secomd date chance. 
+(9) SharedInterest: Most of the second date cases occur when both gender give a similar score to their partner, with the scores both higher than 5, but there's one "second-date wish" case in which female rate 1 and male rate 10.
+
+
+
+
+## Question 3
+
+Many of the numerical variables are on rating scales from 1 to 10. Are the responses within these ranges? If not, what should we do these responses? Is there any missing data? If so, how many observations and for which variables?
+
+```{r}
+range(sd[,c(3:6,11:22)],na.rm = TRUE)
+```
+
+The responses are not within 1 to 10, in stead, all values of numerical variables are from 0 to 10, which means several observations have signed 0 as rating score. I suppose "0" score in this situation may cause by miswriting of candidates. By rating "0", they imply the worst case under this variable. Therefore I chose to change it into 1, which is in the valid rating scale and at the same time indicats a worse case that they can experience.
+
+```{r}
+summary(sd[,c(3:6,11:22)])
+```
+
+From the summary result above, variables "PartnerYesM / FunM / SharedInterestsM /SharedInterestsF" have zero(s) in the results.
+
+```{r}
+# change 0 to 1
+sdnew$PartnerYesM[which(sdnew$PartnerYesM==0)] <- 1
+sdnew$FunM[which(sdnew$FunM==0)] <- 1
+sdnew$SharedInterestsM[which(sdnew$SharedInterestsM==0)] <- 1
+sdnew$SharedInterestsF[which(sdnew$SharedInterestsF==0)] <- 1
+
+# CHECK if rating scales are right this time
+#range(sdnew[,c("PartnerYesM","FunM","SharedInterestsM","SharedInterestsF")],na.rm = T)
+#range(sd[,c("PartnerYesM","FunM","SharedInterestsM","SharedInterestsF")],na.rm = T)
+```
+
+After changing "0" response into "1", check "NA" as below.
+
+```{r}
+summary(sdnew)[7,]
+```
+Missing data exist in variables except for "DecisionM/F", "RaceM/F" and "second.date". The details are reorganized and illustrated as the table below.
+
+```{r}
+B <- matrix(c(2,4,4,4,3,5,3,2,5,3,8,3,6,6,17,10,27,30), byrow = TRUE, ncol = 2)
+rownames(B) <- c("Like","PartnerYes","Age","Attractive","Sincere","Intelligent",
+                 "Fun","Ambitious","SharedInterest")
+colnames(B) <- c("NA number (from response by Male)", "NA number (from response by Female)")
+B
+rm(B)
+```
+
+"Ambitious" and "SharedInterests" responses from both male and female have most number of NAs. 
+
+
+## Question 4
+What are the possible race categories in your data set? Is there any missing data? If so, how many observations and what should you do with them? Make a mosaic plot with female and male race. Describe what you see.
+
+```{r}
+# possible race
+list("Female Race"=table(sdnew$RaceF),
+     "Male Race"=table(sdnew$RaceM))
+list("Missing data in Female"=which(sdnew$RaceF==""),
+     "Missing data in Male"=which(sdnew$RaceM==""))
+
+```
+
+In both gender's data, there are several data with "no group".   
+There are 4 missing data in "RaceF"; 2 missing data in "RaceM". 
+I would like to keep them first, for the following two reasons:
+(1) We have no idea if we will use Race in the model, if no, then missing data will not matter;  
+(2) In logistic regression, missing data will be automatically remove;
+(3) In mosaic plot, missing data still contains information about "what date group" is the missing data from. For example, if only male's race (Black) was collected, we can tell one group with male's race is Black has missing data. Otherwise, we will have no idea where missing data lies in.
+
+
+```{r, fig.height= 5, fig.width= 5}
+# change term in order to make it readable in mosaic plot
+sdtemp <- sdnew
+sdtemp$RaceM[which(sdtemp$RaceM=="")] <- "Missing"
+sdtemp$RaceF[which(sdtemp$RaceF=="")] <- "Missing"
+
+
+mosaicplot(table(sdtemp$RaceM,sdtemp$RaceF), las=TRUE,
+           xlab="Race M" ,ylab="Race F", 
+           main="Race's Mosaic Plot",cex.axis=1,
+           col=c("dodgerblue3", "firebrick3","gold","orange","green2","grey"))
+
+```
+
+From the mosaic plot:
+(1) Caucasian and Asian are the largest two portions of race in this case;
+(2) Date groups with one of the candidate that is Asian/Black/Caucasian missing race data missed;
+(3) There is no date match group in this case, with two people's races are combination of (a.) Black male+Caucasian female, (b.) Other races male+Black female.
+
+## Question 5
+
+Use logistic regression to construct a model for “second.date” (i.e., “second.date” should be your response variable). Incorporate the discoveries and decisions you made in questions 2, 3, and 4. Explain the steps you used to determine the best model, include the summary output for your final model only, check your model assumptions, and evaluate your model by running the relevant hypothesis tests. Do not use “Decision” as an explanatory variable.
+
+```{r}
+# first model: all available explanatory models
+# remove DecisionM & DecisionF from dataset before regression
+sdtemp <- sdtemp[,-1:-2]
+
+#logit1 <- glm(second.date ~ LikeM + LikeF + PartnerYesM + PartnerYesF + AgeM + AgeF +
+#                RaceM + RaceF + AttractiveM + AttractiveF + SincereM + SincereF +
+#                IntelligentM + IntelligentF + FunM +FunF + AmbitiousM + AmbitiousF +
+#                SharedInterestsM + SharedInterestsF, family="binomial",  data=sdnew)
+
+logit1 <- glm(second.date ~. , family = "binomial", data = sdtemp)
+#summary(logit1)
+## NOT a good result
+```
+After trying the first regression with all variables, the regression results, as expected, are not significant for most variables. As we did in homework 3, I use R to do forward/ backward/ seqencial repeat regression automatically, and decide the "best" model in each method, after which, a final comparison is made to choose the final model.
+
+```{r}
+# use R to give regression result automatically
+require(leaps)
+logit.fw <- regsubsets(second.date ~ ., data=sdtemp, method="forward", nvmax=10)
+#summary(logit.fw)
+# check different regression result and get "best"
+data.frame("regression"=paste("trial",c(1:10),sep = "_"),
+                "RMSE"=round(sqrt(summary(logit.fw)$rss),digits = 4),
+               "adj.R^2"=round(summary(logit.fw)$adjr2, digits = 4),
+                "C.P"=round(summary(logit.fw)$cp, digits = 4),
+                "BIC"=round(summary(logit.fw)$bic, digits = 4), stringsAsFactors = FALSE)
+```
+I chose "trail_4" and "trial_5" since they have smaller BIC. From partial F-test below, H0 (the coefficient of RaceF is zero) should not be rejected, therefore, the final model by forward method includes LikeM/ FunF / PartnerYesM / PartnerYesF.
+
+```{r}
+fw1 <- glm(second.date ~ LikeM + FunF + PartnerYesM +PartnerYesF + RaceF, family="binomial",data=sdtemp)
+#summary(fw1)
+fw2 <- glm(second.date ~ LikeM + FunF + PartnerYesM +PartnerYesF, family="binomial",data=sdtemp)
+#summary(fw2)
+anova(fw2, fw1)
+```
+
+Using same process, I do the same steps by backward method and sequential repeat method (the results are omitted). The two method have same "best" models with variables LikeM/ AttractiveF / PartnerYesM / PartnerYesF.
+```{r}
+
+logit.bw <- regsubsets(second.date ~ ., data=sdtemp, method="backward", nvmax=10)
+#summary(logit.bw)
+#data.frame("regression"=paste("trial",c(1:10),sep = "_"),
+#           "RMSE"=round(sqrt(summary(logit.bw)$rss),digits = 4),
+#           "adj.R^2"=round(summary(logit.bw)$adjr2, digits = 4),
+#           "C.P"=round(summary(logit.bw)$cp, digits = 4),
+#           "BIC"=round(summary(logit.bw)$bic, digits = 4), stringsAsFactors = FALSE)
+
+# compare and decide
+bw1 <- glm(second.date ~ LikeM + PartnerYesM + AttractiveF + PartnerYesF + RaceF, family="binomial",data=sdtemp)
+#summary(bw1)
+bw2 <- glm(second.date ~ LikeM + PartnerYesM + AttractiveF + PartnerYesF, family="binomial",data=sdtemp)
+#summary(bw2)
+#anova(bw2,bw1)
+
+logit.seq <- regsubsets(second.date ~ ., data=sdtemp, method="seqrep", nvmax=10)
+#summary(logit.seq)
+#data.frame("regression"=paste("trial",c(1:10),sep = "_"),
+#           "RMSE"=round(sqrt(summary(logit.seq)$rss),digits = 4),
+#           "adj.R^2"=round(summary(logit.seq)$adjr2, digits = 4),
+#           "C.P"=round(summary(logit.seq)$cp, digits = 4),
+#           "BIC"=round(summary(logit.seq)$bic, digits = 4), stringsAsFactors = FALSE)
+```
+
+```{r}
+
+# computing AIC
+AIC <- c(summary(fw2)$aic, summary(bw2)$aic)
+# computing difference 
+dev.null <- c(summary(fw2)$null.deviance, summary(bw2)$null.deviance)
+dev <- c(summary(fw2)$deviance, summary(bw2)$deviance)
+def.null <- c(summary(fw2)$df.null, summary(bw2)$df.null)
+#def.res <- c(summary(fw2)$df.residual, summary(bw2)$df.residual)
+
+criterion <- data.frame("AIC"=AIC,"Null Deviance"=dev.null,"Deviance"=dev,
+                        "Null d.f"=def.null )
+rownames(criterion) <- c("best by forward","best by backward/seqrep")
+library(knitr)
+kable(t(criterion))
+rm(criterion, dev.null, dev, def.null,AIC)
+```
+
+I made a criterion table, generally speaking, the two models have pretty similar value in listed criterion. Although AIC is smaller in forward method model, I chose the model with more remaining data, which is from backward method. It also has more significant output than that in forward method.
+
+```{r}
+summary(bw2)
+```
+
+### Assumptions Check
+
+(1)Multicollinearity check
+```{r}
+require(usdm)
+sdnew.narm <- sdnew[complete.cases(sdnew[,c("LikeM","AttractiveF","PartnerYesM","PartnerYesF")]),]
+vif(sdnew.narm[,c("LikeM","AttractiveF","PartnerYesM","PartnerYesF")])
+```
+
+```{r, fig.height=8,fig.width=8}
+#mar=c(2,2,2,2)+2
+pairs(sdnew.narm[,c("LikeM","AttractiveF","PartnerYesM","PartnerYesF")], las=TRUE,pch=19,cex=0.6,
+      col= col.vector)
+```
+VIFs are close to 1 and the estimates are all positive, which is not easy to identify from the pattern shown in scatter plot. But up to now, it seems colinearity problem is not a considerable one.
+
+(2) Fixed "X" without measurement error:  
+It is acknowledged because the data is from survey and only integers less than (or equal to) 10 are chosen, no measurement error can be made. Also, one the candidate give the result, the score will not be changed for a specific rating object. This assumption is satisfied.
+
+(3) Observations are independent:
+Our data are collected from indivudals that attending speed dating, the result they give can be said as independent.
+
+(4) Model is correctly specified:
+Only variables from the original dataset are chosen, no extraneous variables included in my model. But they are not the only variables that can be taken into consideration, later in the study, maybe other categories, such as, height, education level and be integrated to build a more complete model.
+
+(5) Outcomes can completely linearly separable:
+Satisfies. Since every candidates give one specific result in one category, the observations can be dtermined uniquely in multi-dimension space. Thus, the outcomes can completely separate from each other. And we can do glm() in R, which also means this assumption is satisfied.
+
+(6) No outliers: 
+
+```{r}
+round(range(cooks.distance(bw2)),digits = 4)
+```
+The range of Cook's distance is (0.000, 0.0069)
+```{r}
+plot(bw2 ,which = 4, las=TRUE,  cex.axis=1, cex.lab=1.4 )
+```
+Also from the plot, there's no observations that has Cook's distance larger than 0.1. The no outlier assumption is true.
+
+(7) Sample size
+```{r}
+table(sdnew.narm$second.date)
+#rule of thumb: at least 10 observations for each outcome (0/1) per predictor in your model.
+```
+We have four variables in the model, so we need at least 40 observations when second.date equals 0 and 1, respectively. From the talbe outcome, where there are 63 observations for output "1" and 205 for output "0", both of which are greater than 40. Therefore, sample size satisfied.
+
+### Model Evaluation
+(1) log-likelihood for overall model  
+H0: all slopes in the final model(bw2) are zero
+H1: at least one slope in the final model(bw2) is not zero
+```{r}
+# test statistic
+#G <- summary(bw2)$null.deviance - summary(bw2)$deviance
+# p-value calculation
+pchisq(summary(bw2)$null.deviance - summary(bw2)$deviance, 
+       df=summary(bw2)$df.null - summary(bw2)$df.residual,
+       lower.tail=FALSE)
+```
+The calculated p-value is much smaller than 0.05, we can reject H0 and thus, the remaining variables are all significant in the model.
+
+(2) partial test
+Same as the steps made when built up a model, check if we should remain RaceF in our model.
+H0: the estimate of RaceF is 0
+H1: the estimate of RaceF is not 0
+```{r}
+anova(bw2,bw1, test="LRT")
+```
+
+The p-value is larger than 0.05 to not reject null hypothesis. As the decision above, I dropped RaceF in my final model.
+
+(3) z-test for slopes
+for each variable,
+Ho: slope(beta) is equal to 0
+H1: slope(beta) is not 0
+```{r}
+summary(bw2)$coefficient
+```
+The p-value for each variables are all smller than 0.01, they are all significant to reject the null hypothesis.
+
+To conclude, this model seems to be a good fit for the data.
+And my final model is 
+P(have a second date | LikeM, PartnerYesM, PartnerYesF, AttractiveF)=
+exp^(-10.8811 + 0.4834LikeM + 0.3506PartnerYesM + 0.2799PartnerYesF + 0.3504AttractiveF)/
+(1+exp^(-10.8811 + 0.4834LikeM + 0.3506PartnerYesM + 0.2799PartnerYesF + 0.3504AttractiveF))
+
+## Question 6
+
+Redo question (1) using only the observations used to fit your final logistic regression model. What is your sample size? Does the number of explanatory variables in your model follow our rule of thumb? Justify your answer.
+
+```{r}
+# I have get the NA-removed data for fitting model above
+# which is named as sdnew.narm
+nrow(sdnew.narm)
+```
+This time, sample size is 268.
+```{r}
+# RE- filling contigency table
+A <- table(sdnew.narm$DecisionM,sdnew.narm$DecisionF)
+rownames(A) <- c("Decision Made by Male- NO","Decision Made by Male- YES")
+colnames(A) <- c("Decision Made by Female- NO","Decision Made by Female- YES")
+A
+# proportion calculation
+A[2,2]/sum(A)
+rm(A)
+```
+```{r}
+B <- rep(0, times=nrow(sdnew.narm))
+# replace 0 by 1 where both F&M reply 1
+B[which(sdnew.narm$DecisionF==1 & sdnew.narm$DecisionM==1)] <- 1
+table(B)
+rm(B)
+```
+This result follow the rule of thumb-- at least 40 (4 explanatory variables) observations for each response result.
+
+## Question 7
+
+Interpret the slopes in your model. Which explanatory variables increase the probability of a second date? Which ones decrease it? Is this what you expected to find? Justify.
+
+```{r}
+summary(bw2)$coefficient
+```
+(1) Intercept
+```{r}
+summary(sdnew.narm[,c("second.date","LikeM","AttractiveF","PartnerYesM","PartnerYesF")])[c(1,6),]
+```
+When all the variables are zero, the probability that the two persons will have second date is exp(-10.8811)/(1+exp(-10.8811)), or 1.88*10^-5. 
+Since the rating levels are from 1 to 10, the case where "LikeM = AttractiveF = PartnerYesM = PartnerYesF = 0 " is impossible. Therefore the interpretation of intercept is meaningless.
+
+(2) LikeM
+```{r}
+exp(  exp(summary(bw2)$coefficient[2,1])/(1+exp(summary(bw2)$coefficient[2,1]))  )-1
+```
+
+If LikeM ranking score increases by 1, holding AttractiveF, PartnerYesM and PartnerYesF values constant, the odds of having a second date increases by 85.62%.
+(The calculation steps are: 
+first, use slope os LikeM to get log odds, exp(0.4834)/(1+exp(0.4834));
+then,  calculate percentage change by exp(.)-1 )
+
+(2) AttractiveF
+```{r}
+exp(  exp(summary(bw2)$coefficient[4,1])/(1+exp(summary(bw2)$coefficient[4,1]))  )-1
+```
+
+If AttractiveF ranking score increases by 1, holding LikeM, PartnerYesM and PartnerYesF values constant, the odds of having a second date increases by 79.81%.
+
+(3) PartnerYesM
+```{r}
+exp(  exp(summary(bw2)$coefficient[3,1])/(1+exp(summary(bw2)$coefficient[3,1]))  )-1
+```
+
+If PartnerYesM ranking score increases by 1, holding LikeM, AttractiveF and PartnerYesF values constant, the odds of having a second date increases by 79.81%.
+
+(4) PartnerYesF
+```{r}
+exp(  exp(summary(bw2)$coefficient[5,1])/(1+exp(summary(bw2)$coefficient[5,1]))  )-1
+```
+
+If PartnerYesF ranking score increases by 1, holding LikeM, AttractiveF and PartnerYesM values constant, the odds of having a second date increases by 76.74%.
+
+All the variables included in my final model increase the probability of a second date. It is consist with my expectation.
+In my model, all the variables are positive-judgement oriented. Because the more they like their dates (LikeM is higher), the more attractive they think their dates are (AttractiveF is higher) and the more confidence in the partner saying "yes" (both PartnerYesM and PartnerYesF are higher), the chance of second date will increase. Therefore I think my model is also reasonable.
+
+
+
+## Question 8 
+
+Construct an ROC curve and compute the AUC. Determine the best threshold for classifying observations (i.e., second date or no second date) based on the ROC curve. Justify your choice of threshold. For your chosen threshold, compute (a) accuracy, (b) sensitivity, and (c) specificity.
+
+```{r, fig.width=5, fig.height=5}
+require(pROC)
+
+aaa <-sdnew.narm[,c("second.date","LikeM","AttractiveF","PartnerYesM","PartnerYesF")]
+rownames(aaa) <- 1:nrow(aaa)
+# plot ROC
+roc(response=aaa$second.date, predictor=bw2$fitted.values,
+    plot=TRUE, las=TRUE, lwd=3,	legacy.axes=TRUE,
+    main="ROC for Second Date Analysis", cex.main=1.3, cex.axis=1.2, cex.lab=1.3)
+
+# get AUC
+#AUC <- auc(response=aaa$second.date, predictor=bw2$fitted.values)
+```
+The AUC of the ROC curve is 0.8602. (The ROC curve is plotted below).
+In this problem, we want to have less false positive(FP) predictions, i.e, we predict a group will have a second date but in fact they don't want to date again, as well as true negative(TN) predictions, i.e, we correctly predict a group do not want a second date.
+I first choose the threshold that will give highest sum of 
+specificity and sensitivity.
+
+```{r, fig.height=5, fig.width=10}
+#save ROC info
+require(pROC)
+aaa <-sdnew.narm[,c("second.date","LikeM","AttractiveF","PartnerYesM","PartnerYesF")]
+rocinfo <- roc(response=aaa$second.date, predictor=bw2$fitted.values)
+# sensitivity and specificity for the threshold with highest sensitivity + specificity
+coords(rocinfo, x="best", ret=c("threshold", "specificity", "sensitivity"))
+
+# sensitivity and specificity for a wide range of thresholds
+# use t() to transpose output from coords() for easier use
+pirange <- t(coords(rocinfo, x="all", ret=c("threshold", "specificity", "sensitivity")))
+head(pirange)
+
+#plot sum of sensitivity and specificity against threshold
+par(mfrow=c(1,2))
+# plot ROC
+roc(response=aaa$second.date, predictor=bw2$fitted.values,
+    plot=TRUE, las=TRUE, lwd=3,	legacy.axes=TRUE, 
+    main="ROC for Second Date Analysis", cex.main=1.3, cex.axis=1.1, cex.lab=1.1)
+# adding best sum to ROC plot
+best <- as.data.frame(t(coords(rocinfo, x="best", ret=c("threshold", "specificity", "sensitivity"))))
+points(best$specificity, best$sensitivity, pch=19, col="firebrick")
+legend("bottomright", legend=paste("AUC=", round(rocinfo$auc, digits=3), sep=" "),
+       pch=19, col="firebrick", bty="n", cex=1.9, y.intersp = 1.3)
+
+# plot pi range
+plot(pirange[2:243, "threshold"], pirange[2:243, "sensitivity"] + pirange[2:243, "specificity"], 
+     type="l", las=TRUE, xlab=expression(paste("Threshold, ", pi^"*", sep="")), ylab="Sensitivity + Specificity", 
+     main="Sensitivity + Specificity Against Threshold", cex.axis=1.1, cex.lab=1.1, 
+     cex.main=1.3, lwd=2, xlim=c(0, 1))
+# adding best sum to plot
+points(best$threshold, best$specificity + best$sensitivity, pch=19, col="firebrick")
+legend("topright", legend=paste("best threshold =", round(best$threshold, digits=4)),
+                            pch=19, col="firebrick", bty="n", cex=1.9)
+
+```
+
+```{r}
+# calculate
+actual.2nddate <- rep("2nd.date", times=nrow(aaa))
+actual.2nddate[aaa$second.date==0] <- "no 2nd.date"
+
+classify.50 <- rep("2nd.date", times=nrow(aaa))
+classify.50[bw2$fitted.values < best$threshold] <- "no 2nd.date"
+table(classify.50, actual.2nddate)
+
+# accuracy
+#(TP+TN)/(P+N)
+#(58+136)/268
+
+#sensitivity & specificity
+#coords(rocinfo, x="best", ret=c("threshold", "specificity", "sensitivity"))
+
+# to inspect
+#sensitivity
+#TP/P
+#58/(58+5)
+#specificity
+#136/(136+69)
+
+#final result table
+cbind(best, "accuracy"=(58+136)/268)
+
+
+```
+
+From the table, 
+TP=58, 
+NP=5, 
+FN=69, 
+TN=136,
+
+accuracy=(TP+TN)/(P+N)=(58+136)/268=0.7239
+
+We can directly get sensitivity and specificity through former "threshold choosing process", but to inspect,
+sensitivity=TP/P=58/(58+5)=0.9206
+specificity=TN/N=136/(136+69)=0.6634
+
+
+
+
+
+
