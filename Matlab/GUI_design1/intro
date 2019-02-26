@@ -1,0 +1,6 @@
+this is a project of a graphic user interface(GUI) design for an auto trading system.
+
+Firstly, we finish building our own trading system by using Paris Trading method.
+Then, using the GUI API, we realized the interface design with Matlab.
+
+It can realize the real time trading, as well as change the parameter anytime.
