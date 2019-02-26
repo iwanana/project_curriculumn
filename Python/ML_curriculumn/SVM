@@ -1,0 +1,6 @@
+This is the final project of my Machine Learning course.
+
+We implement SVM, Neural Networks and random forest, 
+SVM is my written code and the latter two methods are from packages.
+
+PCA and feature selection are also used to reduce the attributes numbers.
