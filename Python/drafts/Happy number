@@ -1,0 +1,26 @@
+A number is called happy if it leads to 1 after a sequence of steps 
+where in each step number is replaced by sum of squares of its digit 
+that is if we start with Happy Number and keep replacing it with digits square sum, we reach 1.
+
+For example: 7 is a happy number through the following steps:
+7 -> (7^2) 
+49 -> (4^2 + 9^2)
+97 -> (9^2 + 7^2)
+103 -> (1^2 + 0^2 + 3^2)
+10 -> (1^2 +0^2)
+1
+
+
+def happy_num(n):
+	my_list = []
+	while True:
+		str_num = str(n)
+		r = 0
+		for i in str_num:
+			r += (int(i)**2))
+		if r == 1:
+			return 1
+		elif r in my_list:
+			return 0
+		my_list.append(r)
+		n = r
